@@ -1,0 +1,75 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - button [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - heading "Fortune Cloud Admin" [level=1] [ref=e11]
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - img [ref=e14]
+        - generic [ref=e17]: Admin User
+      - button "Logout" [ref=e18] [cursor=pointer]:
+        - img [ref=e19]
+        - text: Logout
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation [ref=e25]:
+        - link "Dashboard" [ref=e26] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e27]
+          - generic [ref=e30]: Dashboard
+        - link "Leads" [ref=e31] [cursor=pointer]:
+          - /url: /leads
+          - img [ref=e32]
+          - generic [ref=e37]: Leads
+        - link "Commissions" [ref=e38] [cursor=pointer]:
+          - /url: /commissions
+          - img [ref=e39]
+          - generic [ref=e42]: Commissions
+        - link "Reports" [ref=e43] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e44]
+          - generic [ref=e50]: Reports
+    - main [ref=e51]:
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - heading "Lead Management" [level=1] [ref=e54]
+          - paragraph [ref=e55]: View and manage all student leads
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - textbox "Search by name or phone..." [ref=e58]
+            - combobox [ref=e59]:
+              - option "All Status" [selected]
+              - option "Submitted"
+              - option "Lead Acknowledged"
+              - option "HOT"
+              - option "WARM"
+              - option "Unspoken"
+              - option "COLD"
+              - option "Visited"
+              - option "Enrolled"
+            - textbox "Filter by city..." [ref=e60]
+          - table [ref=e61]:
+            - rowgroup [ref=e62]:
+              - row "Student Name Phone City Qualification Status Action" [ref=e63]:
+                - columnheader "Student Name" [ref=e64]
+                - columnheader "Phone" [ref=e65]
+                - columnheader "City" [ref=e66]
+                - columnheader "Qualification" [ref=e67]
+                - columnheader "Status" [ref=e68]
+                - columnheader "Action" [ref=e69]
+            - rowgroup [ref=e70]:
+              - row "John Doe 1234567890 Pune BE HOT View" [ref=e71]:
+                - cell "John Doe" [ref=e72]
+                - cell "1234567890" [ref=e73]
+                - cell "Pune" [ref=e74]
+                - cell "BE" [ref=e75]
+                - cell "HOT" [ref=e76]:
+                  - generic [ref=e77]: HOT
+                - cell "View" [ref=e78]:
+                  - button "View" [ref=e79] [cursor=pointer]
+          - button "1" [ref=e81] [cursor=pointer]
+```
