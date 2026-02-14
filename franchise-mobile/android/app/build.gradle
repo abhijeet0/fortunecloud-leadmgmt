@@ -1,5 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
 
 project.ext.vectoricons = [
     iconFontNames: [ 'MaterialIcons.ttf' ]
@@ -79,12 +80,12 @@ android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
-    namespace "com.fortunecloudfranchise"
+    namespace "com.fortunecloud.leadmgmt"
     buildFeatures {
         buildConfig true
     }
     defaultConfig {
-        applicationId "com.fortunecloudfranchise"
+        applicationId "com.fortunecloud.leadmgmt"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

@@ -18,6 +18,7 @@ buildscript {
         classpath("com.android.tools.build:gradle:8.1.1")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+        classpath("com.google.gms:google-services:4.4.0")
     }
 }
 
@@ -25,6 +26,15 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+
+    // Force Java 17 toolchain for all Java and Kotlin tasks
+    plugins.withType(JavaPlugin).configureEach {
+        java {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(17)
+            }
+        }
     }
 
     tasks.withType(JavaCompile).all {
@@ -42,6 +52,7 @@ allprojects {
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty('android')) {
+            // FORCE override compileOptions - this runs AFTER the module's own settings
             project.android {
                 if (namespace == null) {
                     namespace = project.group
@@ -49,13 +60,29 @@ subprojects {
                 buildFeatures {
                     buildConfig true
                 }
+                // This MUST override any module-level settings (including Firebase's Java 11)
                 compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
                 }
             }
+            
+            // Force all Java compilation tasks to use Java 17 - this overrides task defaults
+            project.tasks.withType(JavaCompile).configureEach {
+                sourceCompatibility = '17'
+                targetCompatibility = '17'
+                // Also try setting the options
+                options.compilerArgs += ['-source', '17', '-target', '17']
+            }
+            
             if (project.plugins.hasPlugin("kotlin-android") || project.plugins.hasPlugin("org.jetbrains.kotlin.android")) {
                 project.android {
+                    kotlinOptions {
+                        jvmTarget = "17"
+                    }
+                }
+                // Force all Kotlin compilation tasks to use JVM 17
+                project.tasks.withType(KotlinCompile).configureEach {
                     kotlinOptions {
                         jvmTarget = "17"
                     }

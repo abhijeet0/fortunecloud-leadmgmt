@@ -1,10 +1,39 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import auth from '@react-native-firebase/auth';
 
-const AuthContext = createContext<any>(null);
+interface User {
+  id: string;
+  franchiseName: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  city: string;
+  [key: string]: any;
+}
 
-export const AuthProvider = ({ children }: any) => {
-  const [user, setUser] = useState<any>(null);
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  login: (userData: User, token: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+  login: async () => {},
+  logout: async () => {},
+});
+
+export const AuthProvider = ({children}: {children: React.ReactNode}) => {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,30 +43,36 @@ export const AuthProvider = ({ children }: any) => {
   const loadUser = async () => {
     try {
       const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
+      const storedToken = await AsyncStorage.getItem('token');
+      if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser));
       }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to load user from storage:', e);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (userData: any, token: string) => {
+  const login = useCallback(async (userData: User, token: string) => {
     setUser(userData);
     await AsyncStorage.setItem('user', JSON.stringify(userData));
     await AsyncStorage.setItem('token', token);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
+    try {
+      // Sign out of Firebase as well
+      await auth().signOut();
+    } catch (e) {
+      console.warn('Firebase signout error (non-critical):', e);
+    }
     setUser(null);
-    await AsyncStorage.removeItem('user');
-    await AsyncStorage.removeItem('token');
-  };
+    await AsyncStorage.multiRemove(['user', 'token']);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{user, login, logout, loading}}>
       {children}
     </AuthContext.Provider>
   );

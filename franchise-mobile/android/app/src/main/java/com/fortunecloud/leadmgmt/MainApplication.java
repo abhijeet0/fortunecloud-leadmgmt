@@ -1,4 +1,4 @@
-package com.fortunecloudfranchise;
+package com.fortunecloud.leadmgmt;
 
 import android.app.Application;
 import com.facebook.react.PackageList;

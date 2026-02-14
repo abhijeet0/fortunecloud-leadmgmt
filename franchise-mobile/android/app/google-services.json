@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "864896641604",
+    "project_id": "fortune-cloud-franchise-app",
+    "storage_bucket": "fortune-cloud-franchise-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:864896641604:android:36615d8fc92a7ab309ea11",
+        "android_client_info": {
+          "package_name": "com.fortunecloud.leadmgmt"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "864896641604-f5thn24kbjdjj0d379a3p52j2db037km.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAP7uTY2odINzxLolRICbNkWS6olPhdlyQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "864896641604-f5thn24kbjdjj0d379a3p52j2db037km.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
