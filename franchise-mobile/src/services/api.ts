@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {API_URL} from '../config';
-import {authEventEmitter} from './authEvents';
+import { API_URL } from '../config';
+import { authEventEmitter } from './authEvents';
 import type {
   LoginResponse,
   SignupResponse,
@@ -75,10 +75,10 @@ export const authService = {
     phone: string;
     city: string;
     password: string;
-  }) => api.post<SignupResponse>('/auth/franchise/signup', data),
+  }) => api.post<SignupResponse>('/franchise/signup', data),
 
   login: (idToken: string) =>
-    api.post<LoginResponse>('/auth/franchise/login', {idToken}),
+    api.post<LoginResponse>('/franchise/login', { idToken }),
 };
 
 // ── Franchise Service ─────────────────────────────────────────
@@ -86,7 +86,7 @@ export const franchiseService = {
   getDashboard: () => api.get<DashboardResponse>('/franchise/dashboard'),
 
   getLeads: (params?: LeadsQueryParams) =>
-    api.get<LeadsListResponse>('/franchise/leads', {params}),
+    api.get<LeadsListResponse>('/franchise/leads', { params }),
 
   getLead: (id: string) =>
     api.get<LeadDetailResponse>(`/franchise/leads/${id}`),

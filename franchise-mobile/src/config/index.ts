@@ -1,4 +1,4 @@
-import {Platform} from 'react-native';
+import { Platform } from 'react-native';
 
 /**
  * Application Configuration
@@ -17,7 +17,7 @@ import {Platform} from 'react-native';
 
 // ── Backend API ───────────────────────────────────────────────
 const DEV_API_HOST = Platform.select({
-  android: '10.0.2.2', // Android emulator → host machine
+  android: 'localhost', // Android emulator → host machine
   ios: 'localhost', // iOS simulator   → host machine
   default: 'localhost',
 });
@@ -25,7 +25,7 @@ const DEV_API_HOST = Platform.select({
 const DEV_API_URL = `http://${DEV_API_HOST}:5001/api`;
 const PROD_API_URL = 'https://api.fortunecloud.com/api'; // Update when ready
 
-export const API_URL: string = __DEV__ ? DEV_API_URL : PROD_API_URL;
+export const API_URL: string = 'http://localhost:5001/api'; //__DEV__ ? DEV_API_URL : PROD_API_URL;
 
 // ── Firebase ──────────────────────────────────────────────────
 // Native Firebase SDKs are configured automatically from:

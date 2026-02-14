@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,15 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import {useAuth} from '../../context/AuthContext';
-import {authService} from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { authService } from '../../services/api';
 import {
   DEFAULT_COUNTRY_CODE,
   OTP_LENGTH,
   OTP_RESEND_TIMEOUT_SECONDS,
 } from '../../config';
 
-const OTPScreen = ({route, navigation}: any) => {
+const OTPScreen = ({ route, navigation }: any) => {
   const {
     phone,
     isSignup,
@@ -29,7 +29,7 @@ const OTPScreen = ({route, navigation}: any) => {
   const [loading, setLoading] = useState(false);
   const [confirmation, setConfirmation] = useState(initialConfirmation);
   const [resendTimer, setResendTimer] = useState(OTP_RESEND_TIMEOUT_SECONDS);
-  const {login} = useAuth();
+  const { login } = useAuth();
 
   const handleOtpChange = (text: string) => {
     setOtp(text.replace(/[^0-9]/g, ''));
@@ -79,7 +79,7 @@ const OTPScreen = ({route, navigation}: any) => {
     try {
       const userCredential = await confirmation.confirm(otp);
       const idToken = await userCredential.user.getIdToken();
-
+      console.log("issginup", isSignup);
       if (isSignup) {
         await authService.signup({
           ...userData,
@@ -94,7 +94,7 @@ const OTPScreen = ({route, navigation}: any) => {
         throw new Error('Invalid response from server');
       }
 
-      const {franchise, token} = response.data;
+      const { franchise, token } = response.data;
 
       if (!franchise || !token) {
         throw new Error('Login response missing required data');
@@ -116,7 +116,7 @@ const OTPScreen = ({route, navigation}: any) => {
     try {
       await handleVerifyFirebase();
     } catch (error: any) {
-      console.error('OTP verification error:', error);
+      console.error('OTP verification error:', error.status);
 
       // Handle Firebase OTP errors
       if (error.code === 'auth/invalid-verification-code') {
@@ -143,7 +143,7 @@ const OTPScreen = ({route, navigation}: any) => {
           'Account Not Found',
           "You don't have an account yet. Please sign up to continue.",
           [
-            {text: 'Cancel', style: 'cancel'},
+            { text: 'Cancel', style: 'cancel' },
             {
               text: 'Go to Signup',
               onPress: () => navigation.navigate('Signup'),
@@ -162,7 +162,7 @@ const OTPScreen = ({route, navigation}: any) => {
           'Already Registered',
           'This account already exists. Please login instead.',
           [
-            {text: 'Cancel', style: 'cancel'},
+            { text: 'Cancel', style: 'cancel' },
             {
               text: 'Go to Login',
               onPress: () => navigation.navigate('Login'),
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     shadowColor: '#2196F3',
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 4,
