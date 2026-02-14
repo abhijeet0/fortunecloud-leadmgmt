@@ -4,19 +4,17 @@ import React, {
   useContext,
   useEffect,
   useCallback,
+  useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import auth from '@react-native-firebase/auth';
-
-interface User {
-  id: string;
-  franchiseName: string;
-  ownerName: string;
-  email: string;
-  phone: string;
-  city: string;
-  [key: string]: any;
-}
+import {authEventEmitter} from '../services/authEvents';
+import {
+  initializeNotifications,
+  setupForegroundNotifications,
+  setupTokenRefreshListener,
+} from '../services/notifications';
+import type {User} from '../types';
 
 interface AuthContextType {
   user: User | null;
@@ -35,6 +33,28 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({children}: {children: React.ReactNode}) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const logoutRef = useRef<() => Promise<void>>();
+
+  const logout = useCallback(async () => {
+    try {
+      await auth().signOut();
+    } catch (e) {
+      console.warn('Firebase signout error (non-critical):', e);
+    }
+    setUser(null);
+    await AsyncStorage.multiRemove(['user', 'token']);
+  }, []);
+
+  // Keep ref updated so the event listener always calls latest logout
+  logoutRef.current = logout;
+
+  // Listen for 401 unauthorized events from API interceptor
+  useEffect(() => {
+    const unsubscribe = authEventEmitter.on('unauthorized', () => {
+      logoutRef.current?.();
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     loadUser();
@@ -46,6 +66,8 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
       const storedToken = await AsyncStorage.getItem('token');
       if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser));
+        // Re-register FCM token on app restart (non-blocking)
+        initializeNotifications().catch(() => {});
       }
     } catch (e) {
       console.error('Failed to load user from storage:', e);
@@ -58,18 +80,22 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
     setUser(userData);
     await AsyncStorage.setItem('user', JSON.stringify(userData));
     await AsyncStorage.setItem('token', token);
+    // Register for push notifications after login (non-blocking)
+    initializeNotifications().catch(() => {});
   }, []);
 
-  const logout = useCallback(async () => {
-    try {
-      // Sign out of Firebase as well
-      await auth().signOut();
-    } catch (e) {
-      console.warn('Firebase signout error (non-critical):', e);
+  // Set up foreground notification listener & token refresh when user is logged in
+  useEffect(() => {
+    if (!user) {
+      return;
     }
-    setUser(null);
-    await AsyncStorage.multiRemove(['user', 'token']);
-  }, []);
+    const unsubForeground = setupForegroundNotifications();
+    const unsubTokenRefresh = setupTokenRefreshListener();
+    return () => {
+      unsubForeground();
+      unsubTokenRefresh();
+    };
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{user, login, logout, loading}}>

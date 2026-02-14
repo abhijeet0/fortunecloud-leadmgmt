@@ -49,7 +49,30 @@ const MainTabNavigator = () => {
         headerShown: route.name !== 'Leads',
         tabBarIcon: getTabBarIcon(route),
         tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: 'gray',
+        tabBarInactiveTintColor: '#999',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopColor: '#E0E0E0',
+          paddingBottom: 4,
+          height: 56,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+        headerStyle: {
+          backgroundColor: '#fff',
+          shadowColor: '#000',
+          shadowOffset: {width: 0, height: 1},
+          shadowOpacity: 0.06,
+          shadowRadius: 3,
+          elevation: 2,
+        },
+        headerTitleStyle: {
+          color: '#1A1A2E',
+          fontWeight: 'bold',
+          fontSize: 18,
+        },
       })}>
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Leads" component={LeadNavigator} />

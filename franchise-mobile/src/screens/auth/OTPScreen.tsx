@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {useAuth} from '../../context/AuthContext';
 import {authService} from '../../services/api';
@@ -30,7 +32,10 @@ const OTPScreen = ({route}: any) => {
   const [resendTimer, setResendTimer] = useState(OTP_RESEND_TIMEOUT_SECONDS);
   const {login} = useAuth();
 
-  // ── Resend countdown ──────────────────────────────────────
+  const handleOtpChange = (text: string) => {
+    setOtp(text.replace(/[^0-9]/g, ''));
+  };
+
   useEffect(() => {
     if (resendTimer <= 0) {
       return;
@@ -41,7 +46,6 @@ const OTPScreen = ({route}: any) => {
     return () => clearInterval(timer);
   }, [resendTimer]);
 
-  // ── Resend OTP ────────────────────────────────────────────
   const handleResend = useCallback(async () => {
     try {
       setResendTimer(OTP_RESEND_TIMEOUT_SECONDS);
@@ -60,7 +64,6 @@ const OTPScreen = ({route}: any) => {
     }
   }, [phone]);
 
-  // ── Verify OTP ────────────────────────────────────────────
   const handleVerify = async () => {
     if (!otp || otp.length < OTP_LENGTH) {
       Alert.alert('Error', `Please enter a valid ${OTP_LENGTH}-digit OTP`);
@@ -74,23 +77,19 @@ const OTPScreen = ({route}: any) => {
 
     setLoading(true);
     try {
-      // 1. Verify OTP with Firebase
       const userCredential = await confirmation.confirm(otp);
       const idToken = await userCredential.user.getIdToken();
 
       if (isSignup) {
-        // 2. Register in Backend if signing up
         await authService.signup({
           ...userData,
           phone,
-          password: 'FirebaseVerifiedUser', // Placeholder — backend requires it
+          password: 'FirebaseVerifiedUser',
         });
       }
 
-      // 3. Login to Backend to get session JWT
       const response = await authService.login(idToken);
       const {franchise, token} = response.data;
-
       await login(franchise, token);
     } catch (error: any) {
       console.error('OTP verification error:', error);
@@ -99,7 +98,9 @@ const OTPScreen = ({route}: any) => {
           ? 'The OTP you entered is incorrect. Please try again.'
           : error.code === 'auth/session-expired'
           ? 'Session expired. Please resend OTP.'
-          : error.message || 'Verification failed';
+          : error.response?.data?.error ||
+            error.message ||
+            'Verification failed';
       Alert.alert('Verification Failed', message);
     } finally {
       setLoading(false);
@@ -107,74 +108,156 @@ const OTPScreen = ({route}: any) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Verify OTP</Text>
-      <Text style={styles.subtitle}>
-        Sent to {DEFAULT_COUNTRY_CODE} {phone}
-      </Text>
-      <TextInput
-        style={styles.input}
-        placeholder={`${OTP_LENGTH}-digit OTP`}
-        keyboardType="number-pad"
-        maxLength={OTP_LENGTH}
-        value={otp}
-        onChangeText={setOtp}
-        autoFocus
-      />
-      <TouchableOpacity
-        style={[styles.button, loading && {opacity: 0.7}]}
-        onPress={handleVerify}
-        disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Verify & Continue</Text>
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={resendTimer > 0 ? undefined : handleResend}
-        disabled={resendTimer > 0}>
-        <Text style={[styles.link, resendTimer > 0 && {color: '#999'}]}>
-          {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={styles.inner}>
+        <View style={styles.iconCircle}>
+          <Text style={styles.iconText}>OTP</Text>
+        </View>
+        <Text style={styles.title}>Verify OTP</Text>
+        <Text style={styles.subtitle}>
+          Enter the {OTP_LENGTH}-digit code sent to
         </Text>
-      </TouchableOpacity>
-    </View>
+        <Text style={styles.phoneDisplay}>
+          {DEFAULT_COUNTRY_CODE} {phone}
+        </Text>
+
+        <TextInput
+          style={styles.otpInput}
+          placeholder={'\u2022'.repeat(OTP_LENGTH)}
+          placeholderTextColor="#CCC"
+          keyboardType="number-pad"
+          maxLength={OTP_LENGTH}
+          value={otp}
+          onChangeText={handleOtpChange}
+          autoFocus
+        />
+
+        <TouchableOpacity
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleVerify}
+          disabled={loading}
+          activeOpacity={0.8}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Verify & Continue</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={resendTimer > 0 ? undefined : handleResend}
+          disabled={resendTimer > 0}
+          style={styles.resendContainer}>
+          {resendTimer > 0 ? (
+            <Text style={styles.resendDisabled}>
+              Resend OTP in <Text style={styles.timerText}>{resendTimer}s</Text>
+            </Text>
+          ) : (
+            <Text style={styles.resendActive}>Resend OTP</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#F8F9FA',
   },
-  title: {fontSize: 24, fontWeight: 'bold', textAlign: 'center', color: '#333'},
+  inner: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2196F3',
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#1A1A2E',
+    textAlign: 'center',
+  },
   subtitle: {
     textAlign: 'center',
     color: '#666',
-    marginBottom: 30,
-    marginTop: 10,
+    marginTop: 8,
+    fontSize: 14,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
-    fontSize: 20,
+  phoneDisplay: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A2E',
+    marginBottom: 28,
+    marginTop: 4,
+  },
+  otpInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: '#D0D5DD',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+    fontSize: 24,
     textAlign: 'center',
-    letterSpacing: 8,
+    letterSpacing: 10,
+    color: '#1A1A2E',
+    fontWeight: '700',
+    width: '100%',
+    marginBottom: 20,
   },
   button: {
     backgroundColor: '#2196F3',
-    padding: 15,
-    borderRadius: 8,
+    paddingVertical: 15,
+    borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
+    width: '100%',
+    shadowColor: '#2196F3',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  buttonText: {color: '#fff', fontSize: 18, fontWeight: 'bold'},
-  link: {marginTop: 20, textAlign: 'center', color: '#2196F3', fontSize: 16},
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
+  resendContainer: {
+    marginTop: 24,
+  },
+  resendDisabled: {
+    fontSize: 15,
+    color: '#999',
+  },
+  timerText: {
+    fontWeight: '700',
+    color: '#666',
+  },
+  resendActive: {
+    fontSize: 15,
+    color: '#2196F3',
+    fontWeight: '600',
+  },
 });
 
 export default OTPScreen;

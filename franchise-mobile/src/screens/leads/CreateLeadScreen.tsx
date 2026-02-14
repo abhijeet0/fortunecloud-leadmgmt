@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import {
+  View,
   Text,
   TextInput,
   TouchableOpacity,
@@ -7,32 +8,63 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {franchiseService} from '../../services/api';
+import type {LeadCreatePayload} from '../../types';
+
+const PHONE_REGEX = /^\d{10}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const INITIAL_FORM: LeadCreatePayload = {
+  studentName: '',
+  qualification: '',
+  stream: '',
+  yearOfPassing: '',
+  city: '',
+  phone: '',
+  email: '',
+};
 
 const CreateLeadScreen = ({navigation}: any) => {
-  const [form, setForm] = useState({
-    studentName: '',
-    qualification: '',
-    stream: '',
-    yearOfPassing: '',
-    city: '',
-    phone: '',
-    email: '',
-  });
+  const [form, setForm] = useState<LeadCreatePayload>({...INITIAL_FORM});
   const [loading, setLoading] = useState(false);
 
+  const handlePhoneChange = (text: string) => {
+    setForm({...form, phone: text.replace(/[^0-9]/g, '')});
+  };
+
+  const handleYearChange = (text: string) => {
+    setForm({...form, yearOfPassing: text.replace(/[^0-9]/g, '')});
+  };
+
   const handleSubmit = async () => {
-    const {studentName, qualification, stream, city, phone} = form;
+    const {studentName, qualification, stream, city, phone, email} = form;
     if (!studentName || !qualification || !stream || !city || !phone) {
-      Alert.alert('Error', 'Please fill all mandatory fields');
+      Alert.alert('Missing Fields', 'Please fill all mandatory fields');
+      return;
+    }
+
+    if (!PHONE_REGEX.test(phone)) {
+      Alert.alert(
+        'Invalid Phone',
+        'Please enter a valid 10-digit phone number',
+      );
+      return;
+    }
+
+    if (email && !EMAIL_REGEX.test(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
     setLoading(true);
     try {
       await franchiseService.createLead(form);
-      Alert.alert('Success', 'Lead submitted successfully', [
+      // Reset form after successful submission
+      setForm({...INITIAL_FORM});
+      Alert.alert('Success', 'Lead submitted successfully!', [
         {text: 'OK', onPress: () => navigation.navigate('Leads')},
       ]);
     } catch (error: any) {
@@ -46,104 +78,176 @@ const CreateLeadScreen = ({navigation}: any) => {
     }
   };
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Submit Student Lead</Text>
-
-      <Text style={styles.label}>Student Name *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.studentName}
-        onChangeText={text => setForm({...form, studentName: text})}
-        placeholder="Full Name"
-      />
-
-      <Text style={styles.label}>Qualification *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.qualification}
-        onChangeText={text => setForm({...form, qualification: text})}
-        placeholder="e.g. BE, BCom, MBA"
-      />
-
-      <Text style={styles.label}>Stream *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.stream}
-        onChangeText={text => setForm({...form, stream: text})}
-        placeholder="e.g. Computer Science"
-      />
-
-      <Text style={styles.label}>Year of Passing</Text>
-      <TextInput
-        style={styles.input}
-        value={form.yearOfPassing}
-        onChangeText={text => setForm({...form, yearOfPassing: text})}
-        placeholder="e.g. 2023"
-        keyboardType="number-pad"
-      />
-
-      <Text style={styles.label}>City *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.city}
-        onChangeText={text => setForm({...form, city: text})}
-        placeholder="City"
-      />
-
-      <Text style={styles.label}>Phone Number *</Text>
-      <TextInput
-        style={styles.input}
-        value={form.phone}
-        onChangeText={text => setForm({...form, phone: text})}
-        placeholder="10-digit number"
-        keyboardType="phone-pad"
-        maxLength={10}
-      />
-
-      <Text style={styles.label}>Email ID</Text>
-      <TextInput
-        style={styles.input}
-        value={form.email}
-        onChangeText={text => setForm({...form, email: text})}
-        placeholder="Optional"
-        keyboardType="email-address"
-      />
-
-      <TouchableOpacity
-        style={[styles.button, loading && {opacity: 0.7}]}
-        onPress={handleSubmit}
-        disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Submit Lead</Text>
+  const renderInput = (
+    label: string,
+    value: string,
+    onChangeText: (text: string) => void,
+    placeholder: string,
+    options?: {
+      keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'number-pad';
+      maxLength?: number;
+      mandatory?: boolean;
+    },
+  ) => (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>
+        {label}
+        {options?.mandatory !== false && (
+          <Text style={styles.required}> *</Text>
         )}
-      </TouchableOpacity>
-    </ScrollView>
+      </Text>
+      <TextInput
+        style={styles.input}
+        placeholder={placeholder}
+        placeholderTextColor="#999"
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType={options?.keyboardType || 'default'}
+        maxLength={options?.maxLength}
+        autoCapitalize={
+          options?.keyboardType === 'email-address' ? 'none' : 'words'
+        }
+      />
+    </View>
+  );
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>Submit Student Lead</Text>
+          <Text style={styles.subtitle}>Fill in the student details below</Text>
+        </View>
+
+        {renderInput(
+          'Student Name',
+          form.studentName,
+          text => setForm({...form, studentName: text}),
+          'Full name',
+        )}
+        {renderInput(
+          'Qualification',
+          form.qualification,
+          text => setForm({...form, qualification: text}),
+          'e.g. BE, BCom, MBA',
+        )}
+        {renderInput(
+          'Stream',
+          form.stream,
+          text => setForm({...form, stream: text}),
+          'e.g. Computer Science',
+        )}
+        {renderInput(
+          'Year of Passing',
+          form.yearOfPassing || '',
+          handleYearChange,
+          'e.g. 2024',
+          {keyboardType: 'number-pad', maxLength: 4, mandatory: false},
+        )}
+        {renderInput(
+          'City',
+          form.city,
+          text => setForm({...form, city: text}),
+          'Enter city name',
+        )}
+        {renderInput(
+          'Phone Number',
+          form.phone,
+          handlePhoneChange,
+          '10-digit number',
+          {keyboardType: 'phone-pad', maxLength: 10},
+        )}
+        {renderInput(
+          'Email ID',
+          form.email || '',
+          text => setForm({...form, email: text}),
+          'Optional',
+          {keyboardType: 'email-address', mandatory: false},
+        )}
+
+        <TouchableOpacity
+          style={[styles.submitButton, loading && styles.buttonDisabled]}
+          onPress={handleSubmit}
+          disabled={loading}
+          activeOpacity={0.8}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitButtonText}>Submit Lead</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {flexGrow: 1, padding: 20, backgroundColor: '#fff'},
-  title: {fontSize: 22, fontWeight: 'bold', marginBottom: 20, color: '#333'},
-  label: {fontSize: 14, color: '#666', marginBottom: 5},
+  flex: {flex: 1, backgroundColor: '#F8F9FA'},
+  container: {
+    flexGrow: 1,
+    padding: 20,
+  },
+  headerSection: {
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1A1A2E',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#444',
+    marginBottom: 6,
+  },
+  required: {
+    color: '#E53935',
+  },
   input: {
+    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 15,
-    fontSize: 16,
+    borderColor: '#D0D5DD',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 10,
+    fontSize: 15,
+    color: '#1A1A2E',
   },
-  button: {
+  submitButton: {
     backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
+    paddingVertical: 15,
+    borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 12,
+    marginBottom: 30,
+    shadowColor: '#4CAF50',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  buttonText: {color: '#fff', fontSize: 18, fontWeight: 'bold'},
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: 'bold',
+  },
 });
 
 export default CreateLeadScreen;

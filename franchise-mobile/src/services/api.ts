@@ -1,6 +1,17 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {API_URL} from '../config';
+import {authEventEmitter} from './authEvents';
+import type {
+  LoginResponse,
+  SignupResponse,
+  LeadsListResponse,
+  LeadDetailResponse,
+  DashboardResponse,
+  CommissionsResponse,
+  LeadCreatePayload,
+  LeadsQueryParams,
+} from '../types';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -22,14 +33,19 @@ api.interceptors.request.use(
   error => Promise.reject(error),
 );
 
-// ── Response Interceptor: handle common errors ────────────────
+// ── Response Interceptor: handle 401 ──────────────────────────
+let isLoggingOut = false;
 api.interceptors.response.use(
   response => response,
   async error => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid — clear stored session
+    if (error.response?.status === 401 && !isLoggingOut) {
+      isLoggingOut = true;
       await AsyncStorage.multiRemove(['user', 'token']);
-      // The AuthContext will pick this up and redirect to login
+      authEventEmitter.emit('unauthorized');
+      // Reset flag after a short delay to prevent rapid-fire
+      setTimeout(() => {
+        isLoggingOut = false;
+      }, 1000);
     }
     return Promise.reject(error);
   },
@@ -37,17 +53,41 @@ api.interceptors.response.use(
 
 // ── Auth Service ──────────────────────────────────────────────
 export const authService = {
-  signup: (data: any) => api.post('/auth/franchise/signup', data),
-  login: (idToken: string) => api.post('/auth/franchise/login', {idToken}),
+  signup: (data: {
+    franchiseName: string;
+    ownerName: string;
+    email: string;
+    phone: string;
+    city: string;
+    password: string;
+  }) => api.post<SignupResponse>('/auth/franchise/signup', data),
+
+  login: (idToken: string) =>
+    api.post<LoginResponse>('/auth/franchise/login', {idToken}),
 };
 
 // ── Franchise Service ─────────────────────────────────────────
 export const franchiseService = {
-  getDashboard: () => api.get('/franchise/dashboard'),
-  getLeads: () => api.get('/franchise/leads'),
-  getLead: (id: string) => api.get(`/franchise/leads/${id}`),
-  createLead: (data: any) => api.post('/franchise/leads', data),
-  getCommissions: () => api.get('/franchise/commissions'),
+  getDashboard: () => api.get<DashboardResponse>('/franchise/dashboard'),
+
+  getLeads: (params?: LeadsQueryParams) =>
+    api.get<LeadsListResponse>('/franchise/leads', {params}),
+
+  getLead: (id: string) =>
+    api.get<LeadDetailResponse>(`/franchise/leads/${id}`),
+
+  createLead: (data: LeadCreatePayload) => api.post('/franchise/leads', data),
+
+  getCommissions: () => api.get<CommissionsResponse>('/franchise/commissions'),
+};
+
+// ── Notification Service ──────────────────────────────────────
+export const notificationService = {
+  registerDeviceToken: (deviceToken: string, deviceName: string) =>
+    api.post('/notifications/franchise/device-token', {
+      deviceToken,
+      deviceName,
+    }),
 };
 
 export default api;
