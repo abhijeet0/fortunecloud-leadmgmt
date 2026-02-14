@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import {DEFAULT_COUNTRY_CODE, USE_MOCK_AUTH} from '../../config';
+import {DEFAULT_COUNTRY_CODE} from '../../config';
 import {authService} from '../../services/api';
 
 const PHONE_REGEX = /^\d{10}$/;
@@ -35,29 +35,14 @@ const LoginScreen = ({navigation}: any) => {
 
     setLoading(true);
     try {
-      if (USE_MOCK_AUTH) {
-        // Mock flow: call backend to request OTP
-        const formattedPhone = `${DEFAULT_COUNTRY_CODE}${phone}`;
-        const response = await authService.mockRequestLoginOtp(formattedPhone);
-        console.log('Mock OTP:', response.data.mockOtp);
-        navigation.navigate('OTP', {
-          phone: formattedPhone,
-          isSignup: false,
-          isMock: true,
-          confirmation: null,
-        });
-      } else {
-        // Firebase flow
-        const auth = (await import('@react-native-firebase/auth')).default;
-        const formattedPhone = `${DEFAULT_COUNTRY_CODE}${phone}`;
-        const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
-        navigation.navigate('OTP', {
-          phone,
-          isSignup: false,
-          isMock: false,
-          confirmation,
-        });
-      }
+      const auth = (await import('@react-native-firebase/auth')).default;
+      const formattedPhone = `${DEFAULT_COUNTRY_CODE}${phone}`;
+      const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
+      navigation.navigate('OTP', {
+        phone: formattedPhone,
+        isSignup: false,
+        confirmation,
+      });
     } catch (error: any) {
       console.error('Login error:', error);
       const backendError = error.response?.data?.error;

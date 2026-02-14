@@ -16,7 +16,6 @@ import {
   DEFAULT_COUNTRY_CODE,
   OTP_LENGTH,
   OTP_RESEND_TIMEOUT_SECONDS,
-  USE_MOCK_AUTH,
 } from '../../config';
 
 const OTPScreen = ({route, navigation}: any) => {
@@ -24,7 +23,6 @@ const OTPScreen = ({route, navigation}: any) => {
     phone,
     isSignup,
     userData,
-    isMock,
     confirmation: initialConfirmation,
   } = route.params;
   const [otp, setOtp] = useState('');
@@ -51,30 +49,17 @@ const OTPScreen = ({route, navigation}: any) => {
     try {
       setResendTimer(OTP_RESEND_TIMEOUT_SECONDS);
 
-      if (isMock || USE_MOCK_AUTH) {
-        // Mock: re-request OTP from backend
-        if (isSignup && userData) {
-          await authService.mockRequestSignupOtp({
-            ...userData,
-            phone,
-          });
-        } else {
-          await authService.mockRequestLoginOtp(phone);
-        }
-        Alert.alert('OTP Sent', 'Mock OTP: 123456');
-      } else {
-        // Firebase: resend via phone auth
-        const auth = (await import('@react-native-firebase/auth')).default;
-        const formattedPhone = phone.startsWith('+')
-          ? phone
-          : `${DEFAULT_COUNTRY_CODE}${phone}`;
-        const newConfirmation = await auth().signInWithPhoneNumber(
-          formattedPhone,
-          true,
-        );
-        setConfirmation(newConfirmation);
-        Alert.alert('OTP Sent', 'A new OTP has been sent to your phone.');
-      }
+      // Firebase: resend via phone auth
+      const auth = (await import('@react-native-firebase/auth')).default;
+      const formattedPhone = phone.startsWith('+')
+        ? phone
+        : `${DEFAULT_COUNTRY_CODE}${phone}`;
+      const newConfirmation = await auth().signInWithPhoneNumber(
+        formattedPhone,
+        true,
+      );
+      setConfirmation(newConfirmation);
+      Alert.alert('OTP Sent', 'A new OTP has been sent to your phone.');
     } catch (error: any) {
       console.error('Resend OTP error:', error);
       const backendError = error.response?.data?.error;
@@ -83,32 +68,7 @@ const OTPScreen = ({route, navigation}: any) => {
         backendError || error.message || 'Failed to resend OTP',
       );
     }
-  }, [phone, isSignup, userData, isMock]);
-
-  const handleVerifyMock = async () => {
-    try {
-      let response;
-      if (isSignup) {
-        response = await authService.mockVerifySignupOtp(phone, otp);
-      } else {
-        response = await authService.mockVerifyLoginOtp(phone, otp);
-      }
-
-      if (!response?.data) {
-        throw new Error('Invalid response from server');
-      }
-
-      const {franchise, token} = response.data;
-
-      if (!franchise || !token) {
-        throw new Error('Login response missing required data');
-      }
-
-      await login(franchise, token);
-    } catch (error: any) {
-      throw error; // Re-throw to be handled by handleVerify's catch block
-    }
-  };
+  }, [phone, isSignup, userData]);
 
   const handleVerifyFirebase = async () => {
     if (!confirmation) {
@@ -154,11 +114,7 @@ const OTPScreen = ({route, navigation}: any) => {
 
     setLoading(true);
     try {
-      if (isMock || USE_MOCK_AUTH) {
-        await handleVerifyMock();
-      } else {
-        await handleVerifyFirebase();
-      }
+      await handleVerifyFirebase();
     } catch (error: any) {
       console.error('OTP verification error:', error);
 
@@ -273,9 +229,6 @@ const OTPScreen = ({route, navigation}: any) => {
           Enter the {OTP_LENGTH}-digit code sent to
         </Text>
         <Text style={styles.phoneDisplay}>{displayPhone}</Text>
-        {(isMock || USE_MOCK_AUTH) && (
-          <Text style={styles.mockHint}>Dev mode — use OTP: 123456</Text>
-        )}
 
         <TextInput
           style={styles.otpInput}
@@ -358,19 +311,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A2E',
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  mockHint: {
-    fontSize: 12,
-    color: '#FF9800',
-    fontWeight: '600',
     marginBottom: 20,
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    overflow: 'hidden',
+    marginTop: 4,
   },
   otpInput: {
     backgroundColor: '#fff',

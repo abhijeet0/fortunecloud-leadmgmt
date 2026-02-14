@@ -79,31 +79,6 @@ export const authService = {
 
   login: (idToken: string) =>
     api.post<LoginResponse>('/auth/franchise/login', {idToken}),
-
-  // Mock auth (local dev) — calls backend mock OTP endpoints
-  mockRequestSignupOtp: (data: {
-    franchiseName: string;
-    ownerName: string;
-    email: string;
-    phone: string;
-    city: string;
-  }) =>
-    api.post<{message: string; mockOtp: string; expiresIn: number}>(
-      '/auth/franchise/signup',
-      data,
-    ),
-
-  mockVerifySignupOtp: (phone: string, otp: string) =>
-    api.post<LoginResponse>('/auth/franchise/verify-otp', {phone, otp}),
-
-  mockRequestLoginOtp: (phone: string) =>
-    api.post<{message: string; mockOtp: string; expiresIn: number}>(
-      '/auth/franchise/login',
-      {phone},
-    ),
-
-  mockVerifyLoginOtp: (phone: string, otp: string) =>
-    api.post<LoginResponse>('/auth/franchise/verify-login-otp', {phone, otp}),
 };
 
 // ── Franchise Service ─────────────────────────────────────────

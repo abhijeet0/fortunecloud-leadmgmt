@@ -1,6 +1,5 @@
 import {Platform, Alert, PermissionsAndroid} from 'react-native';
 import {notificationService} from './api';
-import {USE_MOCK_AUTH} from '../config';
 
 /**
  * Safely get Firebase messaging instance.
@@ -22,11 +21,6 @@ function getMessaging() {
  * In mock mode, skips Firebase permission request.
  */
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (USE_MOCK_AUTH) {
-    console.log('Mock mode: skipping FCM permission request');
-    return false;
-  }
-
   try {
     if (Platform.OS === 'android' && Platform.Version >= 33) {
       const result = await PermissionsAndroid.request(
@@ -61,10 +55,6 @@ export async function requestNotificationPermission(): Promise<boolean> {
  * Get the FCM device token and register it with the backend.
  */
 export async function registerDeviceToken(): Promise<void> {
-  if (USE_MOCK_AUTH) {
-    return;
-  }
-
   try {
     const msg = getMessaging();
     if (!msg) {
@@ -91,10 +81,6 @@ export async function registerDeviceToken(): Promise<void> {
  * Returns an unsubscribe function.
  */
 export function setupForegroundNotifications(): () => void {
-  if (USE_MOCK_AUTH) {
-    return () => {}; // no-op in mock mode
-  }
-
   try {
     const msg = getMessaging();
     if (!msg) {
@@ -117,10 +103,6 @@ export function setupForegroundNotifications(): () => void {
  * Call this at app startup (outside of React component tree).
  */
 export function setupBackgroundNotifications(): void {
-  if (USE_MOCK_AUTH) {
-    return;
-  }
-
   try {
     const msg = getMessaging();
     if (!msg) {
@@ -143,10 +125,6 @@ export function setupBackgroundNotifications(): void {
  * Returns an unsubscribe function.
  */
 export function setupTokenRefreshListener(): () => void {
-  if (USE_MOCK_AUTH) {
-    return () => {}; // no-op in mock mode
-  }
-
   try {
     const msg = getMessaging();
     if (!msg) {
@@ -174,11 +152,6 @@ export function setupTokenRefreshListener(): () => void {
  * Safe to call in mock mode — will no-op.
  */
 export async function initializeNotifications(): Promise<void> {
-  if (USE_MOCK_AUTH) {
-    console.log('Mock mode: skipping notification initialization');
-    return;
-  }
-
   const permissionGranted = await requestNotificationPermission();
   if (permissionGranted) {
     await registerDeviceToken();

@@ -9,7 +9,6 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {authEventEmitter} from '../services/authEvents';
 import {setAuthToken} from '../services/api';
-import {USE_MOCK_AUTH} from '../config';
 import {
   initializeNotifications,
   setupForegroundNotifications,
@@ -37,14 +36,11 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
   const logoutRef = useRef<() => Promise<void>>();
 
   const logout = useCallback(async () => {
-    // Only try Firebase signOut in non-mock mode
-    if (!USE_MOCK_AUTH) {
-      try {
-        const auth = (await import('@react-native-firebase/auth')).default;
-        await auth().signOut();
-      } catch (e) {
-        console.warn('Firebase signout error (non-critical):', e);
-      }
+    try {
+      const auth = (await import('@react-native-firebase/auth')).default;
+      await auth().signOut();
+    } catch (e) {
+      console.warn('Firebase signout error (non-critical):', e);
     }
     setAuthToken(null);
     setUser(null);

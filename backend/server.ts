@@ -12,16 +12,6 @@ import notificationRoutes from "./routes/notifications";
 
 dotenv.config();
 
-// Check if using mock auth for local testing
-const USE_MOCK_AUTH = process.env.USE_MOCK_AUTH === "true";
-
-if (USE_MOCK_AUTH) {
-  console.log("🧪 MOCK AUTH MODE ENABLED - For local testing only!");
-  console.log("   Set USE_MOCK_AUTH=false in .env to use Firebase");
-} else {
-  console.log("🔥 Firebase authentication enabled");
-}
-
 const app: Express = express();
 
 app.use(
@@ -42,26 +32,10 @@ app.use(
 );
 app.use(express.json());
 
-// Initialize Firebase only if not using mock auth
-if (!USE_MOCK_AUTH) {
-  admin.initializeApp({
-    // credential: admin.credential.cert({
-    //   type: process.env.FIREBASE_TYPE || 'service_account',
-    //   project_id: process.env.FIREBASE_PROJECT_ID,
-    //   private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-    //   private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    //   client_email: process.env.FIREBASE_CLIENT_EMAIL,
-    //   client_id: process.env.FIREBASE_CLIENT_ID,
-    //   auth_uri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
-    //   token_uri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
-    //   auth_provider_x509_cert_url:
-    //     process.env.FIREBASE_AUTH_CERT_URL || 'https://www.googleapis.com/oauth2/v1/certs',
-    //   client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-    // }) as any,
-    // databaseURL: process.env.FIREBASE_DATABASE_URL,
-    projectId: "fortune-cloud-franchise-app",
-  });
-}
+// Initialize Firebase Admin SDK
+admin.initializeApp({
+  projectId: process.env.FIREBASE_PROJECT_ID || "fortune-cloud-franchise-app",
+});
 
 mongoose
   .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/fortunecloud")
