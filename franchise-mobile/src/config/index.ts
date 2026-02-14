@@ -35,6 +35,11 @@ export const API_URL: string = __DEV__ ? DEV_API_URL : PROD_API_URL;
 // If you need the project ID in JS for any reason:
 export const FIREBASE_PROJECT_ID = 'fortune-cloud-franchise-app';
 
+// ── Mock Auth ─────────────────────────────────────────────────
+// Set to true for local development without Firebase
+// When true, uses backend mock OTP endpoints instead of Firebase Phone Auth
+export const USE_MOCK_AUTH: boolean = __DEV__;
+
 // ── App Constants ─────────────────────────────────────────────
 export const APP_NAME = 'FortuneCloud Franchise';
 export const DEFAULT_COUNTRY_CODE = '+91';

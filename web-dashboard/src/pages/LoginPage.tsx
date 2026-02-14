@@ -1,44 +1,86 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, requestNotificationPermission } from '../firebase';
-import { authAPI } from '../api';
-import './LoginPage.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+// Firebase imports - commented for local testing
+// import { signInWithEmailAndPassword } from 'firebase/auth';
+// import { auth, requestNotificationPermission } from '../firebase';
+import { authAPI } from "../api";
+import "./LoginPage.css";
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
 }
 
+// Set to true for local testing without Firebase
+const USE_MOCK_AUTH = true;
+
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>,
+  ): Promise<void> => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
+      if (USE_MOCK_AUTH) {
+        // Mock auth mode - call backend directly with email/password
+        const response = await fetch(
+          "http://localhost:5001/api/auth/admin/login",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          },
+        );
 
-      const response = await authAPI.adminLogin(idToken);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Login failed");
+        }
 
-      localStorage.setItem('adminToken', idToken);
-      localStorage.setItem('admin', JSON.stringify(response.data.admin));
+        const data = await response.json();
+        const { token, user } = data;
 
-      const deviceToken = await requestNotificationPermission();
-      if (deviceToken) {
-        localStorage.setItem('deviceToken', deviceToken);
+        // Store token and user info
+        localStorage.setItem("adminToken", token);
+        localStorage.setItem("admin", JSON.stringify(user));
+
+        console.log("✅ Mock login successful:", user.email);
+
+        onLoginSuccess();
+        navigate("/dashboard");
+      } else {
+        // Firebase auth mode (production)
+        /* 
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const idToken = await userCredential.user.getIdToken();
+
+        const response = await authAPI.adminLogin(idToken);
+
+        localStorage.setItem('adminToken', idToken);
+        localStorage.setItem('admin', JSON.stringify(response.data.admin));
+
+        const deviceToken = await requestNotificationPermission();
+        if (deviceToken) {
+          localStorage.setItem('deviceToken', deviceToken);
+        }
+
+        onLoginSuccess();
+        navigate('/dashboard');
+        */
+        throw new Error(
+          "Firebase mode not enabled. Set USE_MOCK_AUTH to true for local testing.",
+        );
       }
-
-      onLoginSuccess();
-      navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      console.error("Login error:", err);
+      setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -78,7 +120,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </div>
 
           <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
       </div>

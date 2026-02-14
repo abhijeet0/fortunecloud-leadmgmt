@@ -7,8 +7,9 @@ import React, {
   useRef,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth from '@react-native-firebase/auth';
 import {authEventEmitter} from '../services/authEvents';
+import {setAuthToken} from '../services/api';
+import {USE_MOCK_AUTH} from '../config';
 import {
   initializeNotifications,
   setupForegroundNotifications,
@@ -36,11 +37,16 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
   const logoutRef = useRef<() => Promise<void>>();
 
   const logout = useCallback(async () => {
-    try {
-      await auth().signOut();
-    } catch (e) {
-      console.warn('Firebase signout error (non-critical):', e);
+    // Only try Firebase signOut in non-mock mode
+    if (!USE_MOCK_AUTH) {
+      try {
+        const auth = (await import('@react-native-firebase/auth')).default;
+        await auth().signOut();
+      } catch (e) {
+        console.warn('Firebase signout error (non-critical):', e);
+      }
     }
+    setAuthToken(null);
     setUser(null);
     await AsyncStorage.multiRemove(['user', 'token']);
   }, []);
@@ -65,6 +71,7 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
       const storedUser = await AsyncStorage.getItem('user');
       const storedToken = await AsyncStorage.getItem('token');
       if (storedUser && storedToken) {
+        setAuthToken(storedToken);
         setUser(JSON.parse(storedUser));
         // Re-register FCM token on app restart (non-blocking)
         initializeNotifications().catch(() => {});
@@ -77,9 +84,12 @@ export const AuthProvider = ({children}: {children: React.ReactNode}) => {
   };
 
   const login = useCallback(async (userData: User, token: string) => {
-    setUser(userData);
-    await AsyncStorage.setItem('user', JSON.stringify(userData));
+    // Set in-memory token SYNCHRONOUSLY so the very first API call after
+    // setUser() already has the token (avoids AsyncStorage async race).
+    setAuthToken(token);
     await AsyncStorage.setItem('token', token);
+    await AsyncStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
     // Register for push notifications after login (non-blocking)
     initializeNotifications().catch(() => {});
   }, []);

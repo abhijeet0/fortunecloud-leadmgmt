@@ -10,8 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import {DEFAULT_COUNTRY_CODE} from '../../config';
+import {DEFAULT_COUNTRY_CODE, USE_MOCK_AUTH} from '../../config';
+import {authService} from '../../services/api';
 
 const PHONE_REGEX = /^\d{10}$/;
 
@@ -35,12 +35,53 @@ const LoginScreen = ({navigation}: any) => {
 
     setLoading(true);
     try {
-      const formattedPhone = `${DEFAULT_COUNTRY_CODE}${phone}`;
-      const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
-      navigation.navigate('OTP', {phone, isSignup: false, confirmation});
+      if (USE_MOCK_AUTH) {
+        // Mock flow: call backend to request OTP
+        const formattedPhone = `${DEFAULT_COUNTRY_CODE}${phone}`;
+        const response = await authService.mockRequestLoginOtp(formattedPhone);
+        console.log('Mock OTP:', response.data.mockOtp);
+        navigation.navigate('OTP', {
+          phone: formattedPhone,
+          isSignup: false,
+          isMock: true,
+          confirmation: null,
+        });
+      } else {
+        // Firebase flow
+        const auth = (await import('@react-native-firebase/auth')).default;
+        const formattedPhone = `${DEFAULT_COUNTRY_CODE}${phone}`;
+        const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
+        navigation.navigate('OTP', {
+          phone,
+          isSignup: false,
+          isMock: false,
+          confirmation,
+        });
+      }
     } catch (error: any) {
-      console.error(error);
-      Alert.alert('Login Error', error.message || 'Failed to send OTP');
+      console.error('Login error:', error);
+      const backendError = error.response?.data?.error;
+
+      if (backendError === 'Franchise not found') {
+        Alert.alert(
+          'Account Not Found',
+          "You don't have an account yet. Please sign up first.",
+          [
+            {text: 'Cancel', style: 'cancel'},
+            {
+              text: 'Go to Signup',
+              onPress: () => navigation.navigate('Signup'),
+            },
+          ],
+        );
+      } else {
+        Alert.alert(
+          'Login Error',
+          backendError ||
+            error.message ||
+            'Failed to send OTP. Please try again.',
+        );
+      }
     } finally {
       setLoading(false);
     }

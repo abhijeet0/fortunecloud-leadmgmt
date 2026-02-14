@@ -21,10 +21,20 @@ const api = axios.create({
   },
 });
 
+// ── In-memory token cache ─────────────────────────────────────
+// Avoids race condition where AsyncStorage read is async and may
+// miss a freshly-stored token on the very first request after login.
+let cachedToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  cachedToken = token;
+}
+
 // ── Request Interceptor: attach auth token ────────────────────
 api.interceptors.request.use(
   async config => {
-    const token = await AsyncStorage.getItem('token');
+    // Prefer in-memory cache (instant), fall back to AsyncStorage
+    const token = cachedToken || (await AsyncStorage.getItem('token'));
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -38,11 +48,15 @@ let isLoggingOut = false;
 api.interceptors.response.use(
   response => response,
   async error => {
-    if (error.response?.status === 401 && !isLoggingOut) {
+    const url = error.config?.url || '';
+    // Don't trigger logout for auth endpoints (login/signup/otp)
+    const isAuthEndpoint = url.includes('/auth/');
+
+    if (error.response?.status === 401 && !isLoggingOut && !isAuthEndpoint) {
       isLoggingOut = true;
+      cachedToken = null;
       await AsyncStorage.multiRemove(['user', 'token']);
       authEventEmitter.emit('unauthorized');
-      // Reset flag after a short delay to prevent rapid-fire
       setTimeout(() => {
         isLoggingOut = false;
       }, 1000);
@@ -53,6 +67,7 @@ api.interceptors.response.use(
 
 // ── Auth Service ──────────────────────────────────────────────
 export const authService = {
+  // Firebase auth (production)
   signup: (data: {
     franchiseName: string;
     ownerName: string;
@@ -64,6 +79,31 @@ export const authService = {
 
   login: (idToken: string) =>
     api.post<LoginResponse>('/auth/franchise/login', {idToken}),
+
+  // Mock auth (local dev) — calls backend mock OTP endpoints
+  mockRequestSignupOtp: (data: {
+    franchiseName: string;
+    ownerName: string;
+    email: string;
+    phone: string;
+    city: string;
+  }) =>
+    api.post<{message: string; mockOtp: string; expiresIn: number}>(
+      '/auth/franchise/signup',
+      data,
+    ),
+
+  mockVerifySignupOtp: (phone: string, otp: string) =>
+    api.post<LoginResponse>('/auth/franchise/verify-otp', {phone, otp}),
+
+  mockRequestLoginOtp: (phone: string) =>
+    api.post<{message: string; mockOtp: string; expiresIn: number}>(
+      '/auth/franchise/login',
+      {phone},
+    ),
+
+  mockVerifyLoginOtp: (phone: string, otp: string) =>
+    api.post<LoginResponse>('/auth/franchise/verify-login-otp', {phone, otp}),
 };
 
 // ── Franchise Service ─────────────────────────────────────────

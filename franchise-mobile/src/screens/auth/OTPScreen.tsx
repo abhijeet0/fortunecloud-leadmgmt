@@ -12,18 +12,19 @@ import {
 } from 'react-native';
 import {useAuth} from '../../context/AuthContext';
 import {authService} from '../../services/api';
-import auth from '@react-native-firebase/auth';
 import {
   DEFAULT_COUNTRY_CODE,
   OTP_LENGTH,
   OTP_RESEND_TIMEOUT_SECONDS,
+  USE_MOCK_AUTH,
 } from '../../config';
 
-const OTPScreen = ({route}: any) => {
+const OTPScreen = ({route, navigation}: any) => {
   const {
     phone,
     isSignup,
     userData,
+    isMock,
     confirmation: initialConfirmation,
   } = route.params;
   const [otp, setOtp] = useState('');
@@ -49,33 +50,72 @@ const OTPScreen = ({route}: any) => {
   const handleResend = useCallback(async () => {
     try {
       setResendTimer(OTP_RESEND_TIMEOUT_SECONDS);
-      const formattedPhone = phone.startsWith('+')
-        ? phone
-        : `${DEFAULT_COUNTRY_CODE}${phone}`;
-      const newConfirmation = await auth().signInWithPhoneNumber(
-        formattedPhone,
-        true,
-      );
-      setConfirmation(newConfirmation);
-      Alert.alert('OTP Sent', 'A new OTP has been sent to your phone.');
+
+      if (isMock || USE_MOCK_AUTH) {
+        // Mock: re-request OTP from backend
+        if (isSignup && userData) {
+          await authService.mockRequestSignupOtp({
+            ...userData,
+            phone,
+          });
+        } else {
+          await authService.mockRequestLoginOtp(phone);
+        }
+        Alert.alert('OTP Sent', 'Mock OTP: 123456');
+      } else {
+        // Firebase: resend via phone auth
+        const auth = (await import('@react-native-firebase/auth')).default;
+        const formattedPhone = phone.startsWith('+')
+          ? phone
+          : `${DEFAULT_COUNTRY_CODE}${phone}`;
+        const newConfirmation = await auth().signInWithPhoneNumber(
+          formattedPhone,
+          true,
+        );
+        setConfirmation(newConfirmation);
+        Alert.alert('OTP Sent', 'A new OTP has been sent to your phone.');
+      }
     } catch (error: any) {
       console.error('Resend OTP error:', error);
-      Alert.alert('Error', error.message || 'Failed to resend OTP');
+      const backendError = error.response?.data?.error;
+      Alert.alert(
+        'Error',
+        backendError || error.message || 'Failed to resend OTP',
+      );
     }
-  }, [phone]);
+  }, [phone, isSignup, userData, isMock]);
 
-  const handleVerify = async () => {
-    if (!otp || otp.length < OTP_LENGTH) {
-      Alert.alert('Error', `Please enter a valid ${OTP_LENGTH}-digit OTP`);
-      return;
+  const handleVerifyMock = async () => {
+    try {
+      let response;
+      if (isSignup) {
+        response = await authService.mockVerifySignupOtp(phone, otp);
+      } else {
+        response = await authService.mockVerifyLoginOtp(phone, otp);
+      }
+
+      if (!response?.data) {
+        throw new Error('Invalid response from server');
+      }
+
+      const {franchise, token} = response.data;
+
+      if (!franchise || !token) {
+        throw new Error('Login response missing required data');
+      }
+
+      await login(franchise, token);
+    } catch (error: any) {
+      throw error; // Re-throw to be handled by handleVerify's catch block
     }
+  };
 
+  const handleVerifyFirebase = async () => {
     if (!confirmation) {
       Alert.alert('Error', 'Verification session expired. Please resend OTP.');
       return;
     }
 
-    setLoading(true);
     try {
       const userCredential = await confirmation.confirm(otp);
       const idToken = await userCredential.user.getIdToken();
@@ -89,23 +129,136 @@ const OTPScreen = ({route}: any) => {
       }
 
       const response = await authService.login(idToken);
+
+      if (!response?.data) {
+        throw new Error('Invalid response from server');
+      }
+
       const {franchise, token} = response.data;
+
+      if (!franchise || !token) {
+        throw new Error('Login response missing required data');
+      }
+
       await login(franchise, token);
     } catch (error: any) {
+      throw error; // Re-throw to be handled by handleVerify's catch block
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!otp || otp.length < OTP_LENGTH) {
+      Alert.alert('Error', `Please enter a valid ${OTP_LENGTH}-digit OTP`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (isMock || USE_MOCK_AUTH) {
+        await handleVerifyMock();
+      } else {
+        await handleVerifyFirebase();
+      }
+    } catch (error: any) {
       console.error('OTP verification error:', error);
-      const message =
-        error.code === 'auth/invalid-verification-code'
-          ? 'The OTP you entered is incorrect. Please try again.'
-          : error.code === 'auth/session-expired'
-          ? 'Session expired. Please resend OTP.'
-          : error.response?.data?.error ||
-            error.message ||
-            'Verification failed';
+
+      // Handle Firebase OTP errors
+      if (error.code === 'auth/invalid-verification-code') {
+        Alert.alert(
+          'Invalid OTP',
+          'The OTP you entered is incorrect. Please try again.',
+        );
+        return;
+      }
+
+      if (error.code === 'auth/session-expired') {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please resend OTP.',
+        );
+        return;
+      }
+
+      // Handle backend errors
+      const backendError = error.response?.data?.error;
+
+      if (backendError === 'Franchise not found') {
+        Alert.alert(
+          'Account Not Found',
+          "You don't have an account yet. Please sign up to continue.",
+          [
+            {text: 'Cancel', style: 'cancel'},
+            {
+              text: 'Go to Signup',
+              onPress: () => navigation.navigate('Signup'),
+            },
+          ],
+        );
+        return;
+      }
+
+      if (
+        backendError === 'Phone or email already registered' ||
+        backendError === 'Email already registered' ||
+        backendError === 'Phone number already registered'
+      ) {
+        Alert.alert(
+          'Already Registered',
+          'This account already exists. Please login instead.',
+          [
+            {text: 'Cancel', style: 'cancel'},
+            {
+              text: 'Go to Login',
+              onPress: () => navigation.navigate('Login'),
+            },
+          ],
+        );
+        return;
+      }
+
+      if (backendError === 'Account is suspended') {
+        Alert.alert(
+          'Account Suspended',
+          'Your account has been suspended. Please contact support.',
+        );
+        return;
+      }
+
+      if (backendError === 'Invalid OTP') {
+        Alert.alert(
+          'Invalid OTP',
+          'The OTP you entered is incorrect. Please try again.',
+        );
+        return;
+      }
+
+      if (backendError === 'OTP expired') {
+        Alert.alert(
+          'OTP Expired',
+          'Your OTP has expired. Please request a new one.',
+        );
+        return;
+      }
+
+      if (backendError === 'OTP not found or expired') {
+        Alert.alert(
+          'OTP Expired',
+          'Your OTP session has expired. Please request a new OTP.',
+        );
+        return;
+      }
+
+      // Generic fallback
+      const message = backendError || error.message || 'Verification failed';
       Alert.alert('Verification Failed', message);
     } finally {
       setLoading(false);
     }
   };
+
+  const displayPhone = phone.startsWith('+')
+    ? phone
+    : `${DEFAULT_COUNTRY_CODE} ${phone}`;
 
   return (
     <KeyboardAvoidingView
@@ -119,9 +272,10 @@ const OTPScreen = ({route}: any) => {
         <Text style={styles.subtitle}>
           Enter the {OTP_LENGTH}-digit code sent to
         </Text>
-        <Text style={styles.phoneDisplay}>
-          {DEFAULT_COUNTRY_CODE} {phone}
-        </Text>
+        <Text style={styles.phoneDisplay}>{displayPhone}</Text>
+        {(isMock || USE_MOCK_AUTH) && (
+          <Text style={styles.mockHint}>Dev mode — use OTP: 123456</Text>
+        )}
 
         <TextInput
           style={styles.otpInput}
@@ -204,8 +358,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A2E',
-    marginBottom: 28,
+    marginBottom: 8,
     marginTop: 4,
+  },
+  mockHint: {
+    fontSize: 12,
+    color: '#FF9800',
+    fontWeight: '600',
+    marginBottom: 20,
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   otpInput: {
     backgroundColor: '#fff',

@@ -11,8 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import {DEFAULT_COUNTRY_CODE} from '../../config';
+import {DEFAULT_COUNTRY_CODE, USE_MOCK_AUTH} from '../../config';
+import {authService} from '../../services/api';
 
 const PHONE_REGEX = /^\d{10}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,16 +54,60 @@ const SignupScreen = ({navigation}: any) => {
     setLoading(true);
     try {
       const formattedPhone = `${DEFAULT_COUNTRY_CODE}${phone}`;
-      const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
-      navigation.navigate('OTP', {
-        phone,
-        isSignup: true,
-        userData: form,
-        confirmation,
-      });
+
+      if (USE_MOCK_AUTH) {
+        // Mock flow: call backend to request signup OTP
+        await authService.mockRequestSignupOtp({
+          ...form,
+          phone: formattedPhone,
+        });
+        navigation.navigate('OTP', {
+          phone: formattedPhone,
+          isSignup: true,
+          isMock: true,
+          userData: {...form, phone: formattedPhone},
+          confirmation: null,
+        });
+      } else {
+        // Firebase flow
+        const auth = (await import('@react-native-firebase/auth')).default;
+        const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
+        navigation.navigate('OTP', {
+          phone,
+          isSignup: true,
+          isMock: false,
+          userData: form,
+          confirmation,
+        });
+      }
     } catch (error: any) {
-      console.error(error);
-      Alert.alert('Signup Error', error.message || 'Failed to send OTP');
+      console.error('Signup error:', error);
+      const backendError = error.response?.data?.error;
+
+      if (
+        backendError === 'Phone or email already registered' ||
+        backendError === 'Phone number already registered' ||
+        backendError === 'Email already registered'
+      ) {
+        Alert.alert(
+          'Already Registered',
+          'An account with this phone or email already exists. Please login instead.',
+          [
+            {text: 'Cancel', style: 'cancel'},
+            {
+              text: 'Go to Login',
+              onPress: () => navigation.navigate('Login'),
+            },
+          ],
+        );
+      } else {
+        Alert.alert(
+          'Signup Error',
+          backendError ||
+            error.message ||
+            'Failed to send OTP. Please try again.',
+        );
+      }
     } finally {
       setLoading(false);
     }
