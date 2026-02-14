@@ -9,6 +9,10 @@ buildscript {
         targetSdkVersion = 34
         ndkVersion = "23.1.7779620"
         kotlinVersion = "1.9.22"
+
+        // AndroidX versions — Firebase Auth 24.x requires core 1.13.1+
+        androidxCore = "1.13.1"
+        androidxCoreKtx = "1.13.1"
     }
     repositories {
         google()
@@ -89,5 +93,21 @@ subprojects {
                 }
             }
         }
+
+        // Force AndroidX Core to 1.13.1+ so Firebase Auth 24.x finds
+        // ContextCompat.registerReceiver(Context, BroadcastReceiver, IntentFilter, int)
+        project.configurations.all {
+            resolutionStrategy.eachDependency { details ->
+                if (details.requested.group == 'androidx.core') {
+                    if (details.requested.name == 'core') {
+                        details.useVersion rootProject.ext.androidxCore
+                    }
+                    if (details.requested.name == 'core-ktx') {
+                        details.useVersion rootProject.ext.androidxCoreKtx
+                    }
+                }
+            }
+        }
     }
 }
+
