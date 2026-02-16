@@ -1,81 +1,114 @@
-import React, {useState, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  RefreshControl,
   ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
-import {useFocusEffect} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import {franchiseService} from '../../services/api';
-import type {Commission} from '../../types';
-
-interface CommissionSummary {
-  total: number;
-  pending: number;
-  approved: number;
-  paid: number;
-}
-
-const getStatusColor = (status: string): string => {
-  switch (status) {
-    case 'Paid':
-      return '#4CAF50';
-    case 'Approved':
-      return '#2196F3';
-    case 'Pending':
-      return '#FF9800';
-    default:
-      return '#757575';
-  }
-};
+import { franchiseService } from '../../services/api';
+import type { Commission } from '../../types/index';
 
 const CommissionScreen = () => {
   const [commissions, setCommissions] = useState<Commission[]>([]);
-  const [summary, setSummary] = useState<CommissionSummary>({
-    total: 0,
-    pending: 0,
-    approved: 0,
-    paid: 0,
-  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(false);
+  const [summary, setSummary] = useState({
+    total: 0,
+    paid: 0,
+    pending: 0,
+  });
 
   const fetchCommissions = useCallback(async () => {
     try {
-      setError(false);
       const response = await franchiseService.getCommissions();
-      setCommissions(response.data.commissions || []);
-      setSummary({
-        total: response.data.total || 0,
-        pending: response.data.pending || 0,
-        approved: response.data.approved || 0,
-        paid: response.data.paid || 0,
-      });
-    } catch (err) {
-      console.error('Failed to fetch commissions:', err);
-      setError(true);
+      const { commissions: commList, total, paid, pending } = response.data;
+      setCommissions(commList);
+      setSummary({ total, paid, pending });
+    } catch (error) {
+      console.error('Error fetching commissions:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchCommissions();
-    }, [fetchCommissions]),
-  );
+  useEffect(() => {
+    fetchCommissions();
+  }, [fetchCommissions]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchCommissions();
   };
 
-  if (loading) {
+  const renderSummaryCard = (
+    label: string,
+    value: number,
+    icon: string,
+    color: string,
+    bgColor: string,
+  ) => (
+    <View style={[styles.summaryBox, { backgroundColor: bgColor }]}>
+      <View style={[styles.summaryIconContainer, { backgroundColor: '#FFFFFF' }]}>
+        <Icon name={icon} size={22} color={color} />
+      </View>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={[styles.summaryValue, { color }]}>₹{value.toLocaleString('en-IN')}</Text>
+    </View>
+  );
+
+  const renderItem = ({ item }: { item: Commission }) => (
+    <TouchableOpacity style={styles.commissionCard} activeOpacity={0.7}>
+      <View style={styles.cardHeader}>
+        <View style={styles.studentInfo}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>
+              {item.leadId?.studentName?.charAt(0).toUpperCase() || 'S'}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.studentName}>{item.leadId?.studentName || 'Student'}</Text>
+            <Text style={styles.courseName}>Commission earned</Text>
+          </View>
+        </View>
+        <View style={[
+          styles.statusBadge,
+          item.status.toLowerCase() === 'paid' ? styles.statusPaid : styles.statusPending
+        ]}>
+          <Text style={[
+            styles.statusText,
+            item.status.toLowerCase() === 'paid' ? styles.textPaid : styles.textPending
+          ]}>
+            {item.status.toUpperCase()}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.cardFooter}>
+        <View style={styles.footerItem}>
+          <Icon name="event" size={16} color="#94A3B8" />
+          <Text style={styles.dateText}>
+            {new Date(item.createdAt).toLocaleDateString('en-IN', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            })}
+          </Text>
+        </View>
+        <Text style={styles.amountText}>₹{item.commissionAmount.toLocaleString('en-IN')}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
@@ -83,82 +116,26 @@ const CommissionScreen = () => {
     );
   }
 
-  const renderItem = ({item}: {item: Commission}) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.studentName} numberOfLines={1}>
-          {item.leadId?.studentName || 'N/A'}
-        </Text>
-        <View
-          style={[
-            styles.statusBadge,
-            {backgroundColor: getStatusColor(item.status)},
-          ]}>
-          <Text style={styles.statusText}>{item.status}</Text>
-        </View>
-      </View>
-
-      <View style={styles.detailsRow}>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Admission Amt</Text>
-          <Text style={styles.detailValue}>
-            ₹{item.admissionAmount?.toLocaleString('en-IN')}
-          </Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Percentage</Text>
-          <Text style={styles.detailValue}>{item.commissionPercentage}%</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Text style={styles.detailLabel}>Commission</Text>
-          <Text style={styles.commissionAmountText}>
-            ₹{item.commissionAmount?.toLocaleString('en-IN')}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.cardFooter}>
-        <Text style={styles.dateText}>
-          Generated:{' '}
-          {new Date(item.createdAt).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
-        </Text>
-      </View>
-    </View>
-  );
-
   return (
-    <View style={styles.container}>
-      {/* Summary Box */}
-      <View style={styles.summaryBox}>
-        <Text style={styles.summaryLabel}>Total Commission</Text>
-        <Text style={styles.summaryValue}>
-          ₹{summary.total.toLocaleString('en-IN')}
-        </Text>
-        <View style={styles.summaryBreakdown}>
-          <View style={styles.summaryBreakdownItem}>
-            <View style={[styles.summaryDot, {backgroundColor: '#FF9800'}]} />
-            <Text style={styles.summaryBreakdownLabel}>Pending</Text>
-            <Text style={styles.summaryBreakdownValue}>
-              ₹{summary.pending.toLocaleString('en-IN')}
-            </Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Commissions</Text>
+        <TouchableOpacity style={styles.filterButton}>
+          <Icon name="tune" size={24} color="#64748B" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.summaryContainer}>
+        {renderSummaryCard('Total Earnings', summary.total, 'account-balance-wallet', '#2196F3', '#E3F2FD')}
+        <View style={styles.summaryRow}>
+          <View style={styles.flexHalf}>
+            {renderSummaryCard('Paid', summary.paid, 'check-circle', '#10B981', '#ECFDF5')}
           </View>
-          <View style={styles.summaryBreakdownItem}>
-            <View style={[styles.summaryDot, {backgroundColor: '#64B5F6'}]} />
-            <Text style={styles.summaryBreakdownLabel}>Approved</Text>
-            <Text style={styles.summaryBreakdownValue}>
-              ₹{summary.approved.toLocaleString('en-IN')}
-            </Text>
-          </View>
-          <View style={styles.summaryBreakdownItem}>
-            <View style={[styles.summaryDot, {backgroundColor: '#81C784'}]} />
-            <Text style={styles.summaryBreakdownLabel}>Paid</Text>
-            <Text style={styles.summaryBreakdownValue}>
-              ₹{summary.paid.toLocaleString('en-IN')}
-            </Text>
+          <View style={{ width: 12 }} />
+          <View style={styles.flexHalf}>
+            {renderSummaryCard('Pending', summary.pending, 'pending', '#F59E0B', '#FFFBEB')}
           </View>
         </View>
       </View>
@@ -167,151 +144,194 @@ const CommissionScreen = () => {
         data={commissions}
         renderItem={renderItem}
         keyExtractor={item => item._id}
-        contentContainerStyle={styles.listContainer}
-        ListHeaderComponent={
-          <Text style={styles.sectionTitle}>Commission History</Text>
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2196F3" />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Icon name="account-balance-wallet" size={48} color="#CCC" />
-            <Text style={styles.emptyText}>
-              {error ? 'Failed to load commissions' : 'No commissions yet'}
-            </Text>
-            <Text style={styles.emptySubtext}>
-              Commissions are generated when leads get enrolled
-            </Text>
+          <View style={styles.emptyState}>
+            <Icon name="payments" size={64} color="#E2E8F0" />
+            <Text style={styles.emptyTitle}>No Commissions Yet</Text>
+            <Text style={styles.emptySubtitle}>Your earnings will appear here once leads are converted.</Text>
           </View>
         }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#2196F3']}
-          />
-        }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#F8F9FA'},
-  centerContainer: {
-    flex: 1,
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  filterButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  summaryContainer: {
+    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  flexHalf: { flex: 1 },
+  summaryBox: {
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 0,
+  },
+  summaryIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    marginBottom: 12,
   },
-  summaryBox: {
-    backgroundColor: '#2196F3',
-    padding: 22,
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 16,
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#2196F3',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  summaryLabel: {color: '#fff', fontSize: 14, opacity: 0.85},
-  summaryValue: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginVertical: 6,
-  },
-  summaryBreakdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-  },
-  summaryBreakdownItem: {
-    alignItems: 'center',
-  },
-  summaryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
     marginBottom: 4,
   },
-  summaryBreakdownLabel: {
-    color: '#fff',
-    fontSize: 11,
-    opacity: 0.8,
-    marginBottom: 2,
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: '800',
   },
-  summaryBreakdownValue: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
+  listContent: {
+    padding: 20,
+    paddingTop: 24,
   },
-  listContainer: {padding: 16},
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#1A1A2E',
-  },
-  card: {
-    backgroundColor: '#fff',
+  commissionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    elevation: 1,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  studentInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
+    flex: 1,
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#475569',
   },
   studentName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1A1A2E',
-    flex: 1,
-    marginRight: 8,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
   },
-  statusBadge: {paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6},
-  statusText: {color: '#fff', fontSize: 11, fontWeight: 'bold'},
-  detailsRow: {
+  courseName: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusPaid: { backgroundColor: '#DCFCE7' },
+  statusPending: { backgroundColor: '#FEF3C7' },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  textPaid: { color: '#166534' },
+  textPending: { color: '#92400E' },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 14,
+  },
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  detailItem: {alignItems: 'flex-start'},
-  detailLabel: {fontSize: 11, color: '#999', marginBottom: 3},
-  detailValue: {fontSize: 14, color: '#1A1A2E', fontWeight: '500'},
-  commissionAmountText: {fontSize: 15, color: '#4CAF50', fontWeight: 'bold'},
-  cardFooter: {marginTop: 10},
-  dateText: {fontSize: 12, color: '#999'},
-  emptyContainer: {
     alignItems: 'center',
-    marginTop: 40,
   },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 12,
-    color: '#999',
-    fontSize: 15,
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  emptySubtext: {
-    textAlign: 'center',
-    marginTop: 6,
-    color: '#BBB',
+  dateText: {
     fontSize: 13,
+    color: '#94A3B8',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  amountText: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  emptyState: {
+    alignItems: 'center',
+    marginTop: 60,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#475569',
+    marginTop: 16,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
   },
 });
 

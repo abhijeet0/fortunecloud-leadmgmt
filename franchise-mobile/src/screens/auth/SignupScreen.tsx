@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,30 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
-import {DEFAULT_COUNTRY_CODE} from '../../config';
-import {authService} from '../../services/api';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { DEFAULT_COUNTRY_CODE } from '../../config';
+import { authService } from '../../services/api';
 
 const PHONE_REGEX = /^\d{10}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const SignupScreen = ({navigation}: any) => {
+const normalizePhone = (input: string) => {
+  const digits = input.replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return digits.slice(2);
+  }
+  if (digits.length === 11 && digits.startsWith('0')) {
+    return digits.slice(1);
+  }
+  if (digits.length > 10) {
+    return digits.slice(-10);
+  }
+  return digits;
+};
+
+const SignupScreen = ({ navigation }: any) => {
   const [form, setForm] = useState({
     franchiseName: '',
     ownerName: '',
@@ -28,17 +44,22 @@ const SignupScreen = ({navigation}: any) => {
   const [loading, setLoading] = useState(false);
 
   const handlePhoneChange = (text: string) => {
-    setForm({...form, phone: text.replace(/[^0-9]/g, '')});
+    setForm(prev => ({ ...prev, phone: normalizePhone(text) }));
   };
 
   const handleSignup = async () => {
-    const {phone, franchiseName, ownerName, email, city} = form;
-    if (!franchiseName || !ownerName || !email || !phone || !city) {
+    const normalizedPhone = normalizePhone(form.phone);
+    const franchiseName = form.franchiseName.trim();
+    const ownerName = form.ownerName.trim();
+    const email = form.email.trim();
+    const city = form.city.trim();
+
+    if (!franchiseName || !ownerName || !email || !normalizedPhone || !city) {
       Alert.alert('Missing Fields', 'All fields are mandatory');
       return;
     }
 
-    if (!PHONE_REGEX.test(phone)) {
+    if (!PHONE_REGEX.test(normalizedPhone)) {
       Alert.alert(
         'Invalid Phone',
         'Please enter a valid 10-digit phone number',
@@ -53,15 +74,31 @@ const SignupScreen = ({navigation}: any) => {
 
     setLoading(true);
     try {
-      const formattedPhone = `${DEFAULT_COUNTRY_CODE}${phone}`;
+      const formattedPhone = `${DEFAULT_COUNTRY_CODE}${normalizedPhone}`;
+      await authService.signup({
+        ...form,
+        franchiseName,
+        ownerName,
+        email,
+        city,
+        // Backend expects 10-digit local phone; country code is only for Firebase OTP.
+        phone: normalizedPhone,
+        password: 'FirebaseVerifiedUser',
+      });
 
-      // Firebase flow
       const auth = (await import('@react-native-firebase/auth')).default;
       const confirmation = await auth().signInWithPhoneNumber(formattedPhone);
       navigation.navigate('OTP', {
         phone: formattedPhone,
         isSignup: true,
-        userData: {...form, phone: formattedPhone},
+        userData: {
+          ...form,
+          franchiseName,
+          ownerName,
+          email,
+          city,
+          phone: formattedPhone,
+        },
         confirmation,
       });
     } catch (error: any) {
@@ -77,7 +114,7 @@ const SignupScreen = ({navigation}: any) => {
           'Already Registered',
           'An account with this phone or email already exists. Please login instead.',
           [
-            {text: 'Cancel', style: 'cancel'},
+            { text: 'Cancel', style: 'cancel' },
             {
               text: 'Go to Login',
               onPress: () => navigation.navigate('Login'),
@@ -88,8 +125,8 @@ const SignupScreen = ({navigation}: any) => {
         Alert.alert(
           'Signup Error',
           backendError ||
-            error.message ||
-            'Failed to send OTP. Please try again.',
+          error.message ||
+          'Failed to send OTP. Please try again.',
         );
       }
     } finally {
@@ -102,31 +139,32 @@ const SignupScreen = ({navigation}: any) => {
     value: string,
     onChangeText: (text: string) => void,
     placeholder: string,
+    icon: string,
     options?: {
       keyboardType?: 'default' | 'email-address' | 'phone-pad';
       maxLength?: number;
-      mandatory?: boolean;
     },
   ) => (
     <View style={styles.inputGroup}>
-      <Text style={styles.label}>
-        {label}
-        {options?.mandatory !== false && (
-          <Text style={styles.required}> *</Text>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.inputWrapper}>
+        <Icon name={icon} size={22} color="#94A3B8" style={styles.inputIcon} />
+        {options?.keyboardType === 'phone-pad' && (
+          <Text style={styles.countryCodeText}>{DEFAULT_COUNTRY_CODE}</Text>
         )}
-      </Text>
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor="#999"
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={options?.keyboardType || 'default'}
-        maxLength={options?.maxLength}
-        autoCapitalize={
-          options?.keyboardType === 'email-address' ? 'none' : 'words'
-        }
-      />
+        <TextInput
+          style={styles.input}
+          placeholder={placeholder}
+          placeholderTextColor="#A0AEC0"
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={options?.keyboardType || 'default'}
+          maxLength={options?.maxLength}
+          autoCapitalize={
+            options?.keyboardType === 'email-address' ? 'none' : 'words'
+          }
+        />
+      </View>
     </View>
   );
 
@@ -135,161 +173,214 @@ const SignupScreen = ({navigation}: any) => {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <View style={styles.headerSection}>
-          <Text style={styles.appName}>Fortune Cloud</Text>
+          <Image
+            source={require('../../assets/fortunecloud-logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>
-            Register your franchise to start submitting leads
+            Join our network and start growing your business today
           </Text>
         </View>
 
-        {renderInput(
-          'Franchise Name',
-          form.franchiseName,
-          text => setForm({...form, franchiseName: text}),
-          'Enter franchise name',
-        )}
-        {renderInput(
-          'Owner Name',
-          form.ownerName,
-          text => setForm({...form, ownerName: text}),
-          'Enter owner full name',
-        )}
-        {renderInput(
-          'Email ID',
-          form.email,
-          text => setForm({...form, email: text}),
-          'example@email.com',
-          {keyboardType: 'email-address'},
-        )}
-        {renderInput(
-          'Phone Number',
-          form.phone,
-          handlePhoneChange,
-          '10-digit phone number',
-          {keyboardType: 'phone-pad', maxLength: 10},
-        )}
-        {renderInput(
-          'City',
-          form.city,
-          text => setForm({...form, city: text}),
-          'Enter your city',
-        )}
-
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSignup}
-          disabled={loading}
-          activeOpacity={0.8}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Get OTP</Text>
+        <View style={styles.card}>
+          {renderInput(
+            'Franchise Name',
+            form.franchiseName,
+            text => setForm({ ...form, franchiseName: text }),
+            'e.g. Fortune Tech',
+            'business',
           )}
-        </TouchableOpacity>
+          {renderInput(
+            'Owner Name',
+            form.ownerName,
+            text => setForm({ ...form, ownerName: text }),
+            'Your full name',
+            'person',
+          )}
+          {renderInput(
+            'Email ID',
+            form.email,
+            text => setForm({ ...form, email: text }),
+            'example@email.com',
+            'email',
+            { keyboardType: 'email-address' },
+          )}
+          {renderInput(
+            'Phone Number',
+            form.phone,
+            handlePhoneChange,
+            '10-digit number',
+            'phone-iphone',
+            { keyboardType: 'phone-pad', maxLength: 10 },
+          )}
+          {renderInput(
+            'City',
+            form.city,
+            text => setForm({ ...form, city: text }),
+            'Your current city',
+            'place',
+          )}
 
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Login')}
-          disabled={loading}
-          style={styles.linkContainer}>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignup}
+            disabled={loading}
+            activeOpacity={0.8}>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <View style={styles.buttonContent}>
+                <Text style={styles.buttonText}>Register & Continue</Text>
+                <Icon name="arrow-forward" size={20} color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
           <Text style={styles.linkText}>Already have an account? </Text>
-          <Text style={styles.linkAction}>Login</Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')} disabled={loading}>
+            <Text style={styles.linkAction}>Sign In</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  flex: {flex: 1, backgroundColor: '#F8F9FA'},
-  container: {
-    flexGrow: 1,
+  flex: { flex: 1, backgroundColor: '#FFFFFF' },
+  scrollContainer: {
     padding: 24,
-    justifyContent: 'center',
+    paddingBottom: 40,
   },
   headerSection: {
-    marginBottom: 28,
+    alignItems: 'center',
+    marginBottom: 32,
+    marginTop: 20,
   },
-  appName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2196F3',
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#1A1A2E',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 6,
-  },
-  inputGroup: {
+  logoImage: {
+    width: 210,
+    height: 90,
     marginBottom: 16,
   },
-  label: {
+  appName: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#444',
-    marginBottom: 6,
+    fontWeight: '700',
+    color: '#2196F3',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 8,
   },
-  required: {
-    color: '#E53935',
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1A202C',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#718096',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  inputGroup: {
+    marginBottom: 18,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    height: 50,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  countryCodeText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginRight: 8,
   },
   input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D0D5DD',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderRadius: 10,
-    fontSize: 15,
-    color: '#1A1A2E',
+    flex: 1,
+    fontSize: 16,
+    color: '#1E293B',
+    fontWeight: '600',
   },
   button: {
     backgroundColor: '#2196F3',
-    paddingVertical: 15,
+    height: 50,
     borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 12,
     shadowColor: '#2196F3',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 15,
+    elevation: 8,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    backgroundColor: '#94A3B8',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 17,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '800',
+    marginRight: 8,
   },
-  linkContainer: {
+  footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
-    marginBottom: 20,
+    marginTop: 32,
   },
   linkText: {
-    fontSize: 15,
-    color: '#666',
+    fontSize: 16,
+    color: '#718096',
+    fontWeight: '500',
   },
   linkAction: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#2196F3',
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
 

@@ -12,7 +12,7 @@ const Tab = createBottomTabNavigator();
 const LeadStack = createNativeStackNavigator();
 
 const LeadNavigator = () => (
-  <LeadStack.Navigator>
+  <LeadStack.Navigator screenOptions={{headerShown: false}}>
     <LeadStack.Screen
       name="LeadList"
       component={LeadListScreen}
@@ -21,7 +21,7 @@ const LeadNavigator = () => (
     <LeadStack.Screen
       name="LeadDetail"
       component={LeadDetailScreen}
-      options={{title: 'Lead Details'}}
+      options={{headerShown: true, title: 'Lead Details'}}
     />
   </LeadStack.Navigator>
 );
@@ -46,7 +46,7 @@ const MainTabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({
-        headerShown: route.name !== 'Leads',
+        headerShown: false,
         tabBarIcon: getTabBarIcon(route),
         tabBarActiveTintColor: '#2196F3',
         tabBarInactiveTintColor: '#999',
@@ -59,19 +59,6 @@ const MainTabNavigator = () => {
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-        },
-        headerStyle: {
-          backgroundColor: '#fff',
-          shadowColor: '#000',
-          shadowOffset: {width: 0, height: 1},
-          shadowOpacity: 0.06,
-          shadowRadius: 3,
-          elevation: 2,
-        },
-        headerTitleStyle: {
-          color: '#1A1A2E',
-          fontWeight: 'bold',
-          fontSize: 18,
         },
       })}>
       <Tab.Screen name="Dashboard" component={DashboardScreen} />

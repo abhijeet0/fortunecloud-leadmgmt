@@ -1,123 +1,116 @@
-import React, {useState, useCallback} from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
+  RefreshControl,
+  SafeAreaView,
+  StatusBar,
+  TextInput,
 } from 'react-native';
-import {useFocusEffect} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import {franchiseService} from '../../services/api';
-import type {Lead, LeadStatus} from '../../types';
+import { franchiseService } from '../../services/api';
 
-const STATUS_FILTERS: Array<{label: string; value: string}> = [
-  {label: 'All', value: 'All'},
-  {label: 'Submitted', value: 'Submitted'},
-  {label: 'HOT', value: 'HOT'},
-  {label: 'WARM', value: 'WARM'},
-  {label: 'COLD', value: 'COLD'},
-  {label: 'Enrolled', value: 'Enrolled'},
-];
+interface Lead {
+  _id: string;
+  studentName: string;
+  course: string;
+  phone: string;
+  currentStatus: string;
+  createdAt: string;
+}
 
-const getStatusColor = (status: string): string => {
-  switch (status) {
-    case 'HOT':
-      return '#E53935';
-    case 'WARM':
-      return '#FF9800';
-    case 'COLD':
-      return '#2196F3';
-    case 'Enrolled':
-      return '#4CAF50';
-    case 'Visited':
-      return '#9C27B0';
-    case 'Lead acknowledged':
-      return '#00BCD4';
-    case 'Unspoken':
-      return '#607D8B';
-    case 'Submitted':
-      return '#78909C';
-    default:
-      return '#757575';
-  }
-};
-
-const LeadListScreen = ({navigation}: any) => {
+const LeadListScreen = ({ navigation }: any) => {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchLeads = useCallback(async () => {
     try {
-      setError(false);
       const response = await franchiseService.getLeads();
-      setLeads(response.data.leads || []);
-    } catch (err) {
-      console.error('Failed to fetch leads:', err);
-      setError(true);
+      setLeads(response.data.leads);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  // Refresh on tab focus
-  useFocusEffect(
-    useCallback(() => {
-      fetchLeads();
-    }, [fetchLeads]),
-  );
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchLeads();
   };
 
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch =
-      lead.studentName?.toLowerCase().includes(search.toLowerCase()) ||
-      lead.phone?.includes(search);
-    const matchesFilter = filter === 'All' || lead.currentStatus === filter;
-    return matchesSearch && matchesFilter;
-  });
+  const getStatusStyle = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'submitted': return { bg: '#E3F2FD', text: '#1976D2' };
+      case 'lead acknowledged': return { bg: '#F3E5F5', text: '#7B1FA2' };
+      case 'enrolled': return { bg: '#E8F5E9', text: '#2E7D32' };
+      case 'hot': return { bg: '#FFEBEE', text: '#C62828' };
+      default: return { bg: '#F5F5F5', text: '#616161' };
+    }
+  };
 
-  const renderItem = ({item}: {item: Lead}) => (
-    <TouchableOpacity
-      style={styles.leadCard}
-      onPress={() => navigation.navigate('LeadDetail', {leadId: item._id})}
-      activeOpacity={0.7}>
-      <View style={styles.leadInfo}>
-        <Text style={styles.leadName}>{item.studentName}</Text>
-        <Text style={styles.leadMeta}>
-          {item.phone} \u2022 {item.city}
-        </Text>
-        <Text style={styles.leadDate}>
-          {new Date(item.createdAt).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
-        </Text>
-      </View>
-      <View
-        style={[
-          styles.statusBadge,
-          {backgroundColor: getStatusColor(item.currentStatus)},
-        ]}>
-        <Text style={styles.statusText}>{item.currentStatus}</Text>
-      </View>
-      <Icon name="chevron-right" size={22} color="#C0C0C0" />
-    </TouchableOpacity>
+  const filteredLeads = leads.filter(lead =>
+    lead.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (lead.course && lead.course.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  if (loading) {
+  const renderItem = ({ item }: { item: Lead }) => {
+    const statusStyle = getStatusStyle(item.currentStatus || 'Submitted');
+    return (
+      <TouchableOpacity
+        style={styles.leadCard}
+        onPress={() => navigation.navigate('LeadDetail', { leadId: item._id })}
+        activeOpacity={0.7}>
+        <View style={styles.cardHeader}>
+          <View style={styles.studentInfo}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{item.studentName.charAt(0).toUpperCase()}</Text>
+            </View>
+            <View>
+              <Text style={styles.studentName} numberOfLines={1}>{item.studentName}</Text>
+              <Text style={styles.courseName} numberOfLines={1}>{item.course || 'Interested Student'}</Text>
+            </View>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[styles.statusText, { color: statusStyle.text }]}>
+              {(item.currentStatus || 'Submitted').toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.cardFooter}>
+          <View style={styles.footerItem}>
+            <Icon name="phone" size={16} color="#94A3B8" />
+            <Text style={styles.footerText}>{item.phone}</Text>
+          </View>
+          <View style={styles.footerItem}>
+            <Icon name="event" size={16} color="#94A3B8" />
+            <Text style={styles.footerText}>
+              {new Date(item.createdAt).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short'
+              })}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading && !refreshing) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#2196F3" />
@@ -125,192 +118,224 @@ const LeadListScreen = ({navigation}: any) => {
     );
   }
 
-  if (error && leads.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <Icon name="cloud-off" size={48} color="#999" />
-        <Text style={styles.errorText}>Failed to load leads</Text>
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Student Leads</Text>
         <TouchableOpacity
-          style={styles.retryButton}
-          onPress={() => {
-            setLoading(true);
-            fetchLeads();
-          }}>
-          <Text style={styles.retryText}>Retry</Text>
+          style={styles.addButton}
+          onPress={() => navigation.navigate('Add Lead')}>
+          <Icon name="add" size={24} color="#FFFFFF" />
+          <Text style={styles.addButtonText}>Add New</Text>
         </TouchableOpacity>
       </View>
-    );
-  }
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.searchBar}>
-        <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name or phone"
-          placeholderTextColor="#999"
-          value={search}
-          onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Icon name="close" size={20} color="#999" />
-          </TouchableOpacity>
-        )}
+      <View style={styles.searchSection}>
+        <View style={styles.searchWrapper}>
+          <Icon name="search" size={20} color="#94A3B8" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name or phone..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery !== '' && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Icon name="cancel" size={20} color="#CBD5E1" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <FlatList
         data={filteredLeads}
         renderItem={renderItem}
         keyExtractor={item => item._id}
-        contentContainerStyle={styles.listContainer}
-        ListHeaderComponent={
-          <View style={styles.filterScroll}>
-            {STATUS_FILTERS.map(f => (
-              <TouchableOpacity
-                key={f.value}
-                style={[
-                  styles.filterChip,
-                  filter === f.value && styles.activeChip,
-                ]}
-                onPress={() => setFilter(f.value)}>
-                <Text
-                  style={[
-                    styles.filterText,
-                    filter === f.value && styles.activeFilterText,
-                  ]}>
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2196F3" />
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Icon name="inbox" size={48} color="#CCC" />
-            <Text style={styles.emptyText}>No leads found</Text>
-            {filter !== 'All' && (
-              <TouchableOpacity onPress={() => setFilter('All')}>
-                <Text style={styles.clearFilterText}>Clear filter</Text>
-              </TouchableOpacity>
-            )}
+          <View style={styles.emptyState}>
+            <Icon name="person-search" size={64} color="#E2E8F0" />
+            <Text style={styles.emptyTitle}>No Leads Found</Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery ? "We couldn't find any leads matching your search." : "Start by adding your first student lead."}
+            </Text>
           </View>
         }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#2196F3']}
-          />
-        }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#F8F9FA'},
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#2196F3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  searchSection: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  searchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 48,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+  listContent: {
+    padding: 20,
+    paddingTop: 24,
+  },
+  leadCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  studentInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  studentName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  courseName: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 14,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F8FAFC',
   },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 4,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-  },
-  searchIcon: {marginRight: 10},
-  searchInput: {
-    flex: 1,
-    height: 46,
-    fontSize: 15,
-    color: '#1A1A2E',
-  },
-  filterScroll: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingBottom: 8,
-    gap: 8,
-  },
-  filterChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: '#E8EDF2',
-  },
-  activeChip: {backgroundColor: '#2196F3'},
-  filterText: {color: '#555', fontSize: 13, fontWeight: '500'},
-  activeFilterText: {color: '#fff', fontWeight: 'bold'},
-  listContainer: {padding: 16},
-  leadCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-  },
-  leadInfo: {flex: 1},
-  leadName: {fontSize: 16, fontWeight: 'bold', color: '#1A1A2E'},
-  leadMeta: {fontSize: 13, color: '#666', marginTop: 3},
-  leadDate: {fontSize: 12, color: '#999', marginTop: 2},
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  statusText: {color: '#fff', fontSize: 11, fontWeight: 'bold'},
-  emptyContainer: {
+  emptyState: {
     alignItems: 'center',
     marginTop: 60,
   },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 12,
-    color: '#999',
-    fontSize: 15,
-  },
-  clearFilterText: {
-    color: '#2196F3',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-  errorText: {
-    color: '#666',
-    fontSize: 16,
-    marginTop: 12,
-  },
-  retryButton: {
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#475569',
     marginTop: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    backgroundColor: '#2196F3',
-    borderRadius: 8,
   },
-  retryText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 15,
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
   },
 });
 

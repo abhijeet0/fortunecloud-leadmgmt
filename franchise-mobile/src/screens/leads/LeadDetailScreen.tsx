@@ -99,115 +99,127 @@ const LeadDetailScreen = ({route}: any) => {
   return (
     <ScrollView
       style={styles.container}
+      showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
           colors={['#2196F3']}
+          tintColor="#2196F3"
         />
       }>
-      {/* Current Status Banner */}
-      <View
-        style={[
-          styles.statusBanner,
-          {backgroundColor: getStatusColor(lead.currentStatus)},
-        ]}>
-        <Text style={styles.statusBannerText}>{lead.currentStatus}</Text>
+      {/* Current Status Header */}
+      <View style={styles.header}>
+        <View
+          style={[
+            styles.statusBadge,
+            {backgroundColor: `${getStatusColor(lead.currentStatus)}15`},
+          ]}>
+          <Text style={[styles.statusText, {color: getStatusColor(lead.currentStatus)}]}>
+            {lead.currentStatus}
+          </Text>
+        </View>
+        <Text style={styles.studentName}>{lead.studentName}</Text>
+        <Text style={styles.submissionDate}>
+          Submitted on {new Date(lead.createdAt).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}
+        </Text>
       </View>
 
       {/* Student Information */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Student Information</Text>
-        <InfoRow label="Name" value={lead.studentName} />
-        <InfoRow label="Phone" value={lead.phone} />
-        {lead.email ? <InfoRow label="Email" value={lead.email} /> : null}
-        <InfoRow
-          label="Qualification"
-          value={`${lead.qualification} (${lead.stream})`}
-        />
-        {lead.yearOfPassing ? (
-          <InfoRow label="Year of Passing" value={String(lead.yearOfPassing)} />
-        ) : null}
-        <InfoRow label="City" value={lead.city} />
-        <InfoRow
-          label="Submitted"
-          value={new Date(lead.createdAt).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-          })}
-        />
-      </View>
-
-      {/* Status History */}
-      {history.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Status History</Text>
-          {history.map((item, index) => (
-            <View key={item._id || index} style={styles.historyItem}>
-              <View style={styles.timeline}>
-                <View
-                  style={[
-                    styles.dot,
-                    {backgroundColor: getStatusColor(item.status)},
-                  ]}
-                />
-                {index !== history.length - 1 && <View style={styles.line} />}
-              </View>
-              <View style={styles.historyContent}>
-                <Text style={styles.historyStatus}>{item.status}</Text>
-                <Text style={styles.historyDate}>
-                  {new Date(item.updatedAt || item.createdAt).toLocaleString(
-                    'en-IN',
-                    {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    },
-                  )}
-                </Text>
-                {item.remarks ? (
-                  <Text style={styles.historyRemark}>{item.remarks}</Text>
-                ) : null}
-              </View>
-            </View>
-          ))}
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Icon name="person-outline" size={20} color="#2196F3" />
+          <Text style={styles.cardTitle}>Student Details</Text>
         </View>
-      )}
+        <View style={styles.infoGrid}>
+          <InfoItem label="Phone" value={lead.phone} icon="phone" />
+          <InfoItem label="Email" value={lead.email || 'Not provided'} icon="email" />
+          <InfoItem 
+            label="Education" 
+            value={`${lead.qualification} (${lead.stream})`} 
+            icon="school" 
+          />
+          {lead.yearOfPassing ? (
+            <InfoItem label="Passing Year" value={String(lead.yearOfPassing)} icon="event" />
+          ) : null}
+          <InfoItem label="City" value={lead.city} icon="place" />
+        </View>
+      </View>
 
       {/* Commission Details */}
       {commission && (
-        <View style={[styles.section, styles.commissionSection]}>
-          <Text style={styles.sectionTitle}>Commission Details</Text>
-          <InfoRow
-            label="Admission Amount"
-            value={`₹${commission.admissionAmount?.toLocaleString('en-IN')}`}
-          />
-          <InfoRow
-            label="Commission %"
-            value={`${commission.commissionPercentage}%`}
-          />
-          <InfoRow
-            label="Commission Amount"
-            value={`₹${commission.commissionAmount?.toLocaleString('en-IN')}`}
-            valueStyle={styles.commissionAmountText}
-          />
-          <InfoRow
-            label="Status"
-            value={commission.status}
-            valueStyle={{
-              fontWeight: 'bold',
-              color: getCommissionStatusColor(commission.status),
-            }}
-          />
+        <View style={[styles.card, styles.commissionCard]}>
+          <View style={styles.cardHeader}>
+            <Icon name="payments" size={20} color="#48BB78" />
+            <Text style={[styles.cardTitle, {color: '#2D3748'}]}>Commission</Text>
+            <View style={[styles.miniBadge, {backgroundColor: `${getCommissionStatusColor(commission.status)}15`}]}>
+              <Text style={[styles.miniBadgeText, {color: getCommissionStatusColor(commission.status)}]}>
+                {commission.status}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.commissionMain}>
+            <View>
+              <Text style={styles.commLabel}>Earned Amount</Text>
+              <Text style={styles.commValue}>₹{commission.commissionAmount?.toLocaleString('en-IN')}</Text>
+            </View>
+            <View style={styles.commDivider} />
+            <View>
+              <Text style={styles.commLabel}>Course Fee</Text>
+              <Text style={styles.commSubValue}>₹{commission.admissionAmount?.toLocaleString('en-IN')}</Text>
+            </View>
+          </View>
+
           {commission.paidDate && (
-            <InfoRow
-              label="Paid On"
-              value={new Date(commission.paidDate).toLocaleDateString('en-IN')}
-            />
+            <View style={styles.paidInfo}>
+              <Icon name="check-circle" size={14} color="#48BB78" />
+              <Text style={styles.paidText}>Paid on {new Date(commission.paidDate).toLocaleDateString('en-IN')}</Text>
+            </View>
           )}
+        </View>
+      )}
+
+      {/* Status History */}
+      {history.length > 0 && (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Icon name="history" size={20} color="#718096" />
+            <Text style={styles.cardTitle}>Status History</Text>
+          </View>
+          <View style={styles.historyList}>
+            {history.map((item, index) => (
+              <View key={item._id || index} style={styles.historyItem}>
+                <View style={styles.timeline}>
+                  <View
+                    style={[
+                      styles.dot,
+                      {backgroundColor: getStatusColor(item.status)},
+                    ]}
+                  />
+                  {index !== history.length - 1 && <View style={styles.line} />}
+                </View>
+                <View style={styles.historyContent}>
+                  <View style={styles.historyHeader}>
+                    <Text style={styles.historyStatus}>{item.status}</Text>
+                    <Text style={styles.historyDate}>
+                      {new Date(item.updatedAt || item.createdAt).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </Text>
+                  </View>
+                  {item.remarks ? (
+                    <Text style={styles.historyRemark}>{item.remarks}</Text>
+                  ) : null}
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
       )}
 
@@ -216,143 +228,254 @@ const LeadDetailScreen = ({route}: any) => {
   );
 };
 
-const InfoRow = ({
+const InfoItem = ({
   label,
   value,
-  valueStyle,
+  icon,
 }: {
   label: string;
   value: string;
-  valueStyle?: any;
+  icon: string;
 }) => (
-  <View style={styles.infoRow}>
-    <Text style={styles.label}>{label}</Text>
-    <Text style={[styles.value, valueStyle]}>{value}</Text>
+  <View style={styles.infoItem}>
+    <View style={styles.infoIconBox}>
+      <Icon name={icon} size={16} color="#718096" />
+    </View>
+    <View style={{flex: 1}}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
   </View>
 );
 
 const getCommissionStatusColor = (status: string): string => {
   switch (status) {
     case 'Paid':
-      return '#4CAF50';
+      return '#48BB78';
     case 'Approved':
       return '#2196F3';
     case 'Pending':
-      return '#FF9800';
+      return '#F6AD55';
     default:
-      return '#666';
+      return '#718096';
   }
 };
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#F8F9FA'},
+  container: {flex: 1, backgroundColor: '#FFFFFF'},
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FFFFFF',
+    padding: 40,
   },
-  statusBanner: {
-    paddingVertical: 10,
+  header: {
+    padding: 24,
     alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderColor: '#EDF2F7',
   },
-  statusBannerText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
+  statusBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  statusText: {
+    fontSize: 13,
+    fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  section: {
-    backgroundColor: '#fff',
-    padding: 18,
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 12,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
+  studentName: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#1A202C',
+    textAlign: 'center',
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 14,
-    color: '#2196F3',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 10,
-    alignItems: 'flex-start',
-  },
-  label: {
-    width: 130,
-    color: '#888',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  value: {
-    flex: 1,
-    color: '#1A1A2E',
+  submissionDate: {
     fontSize: 14,
+    color: '#718096',
+    marginTop: 6,
     fontWeight: '500',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2D3748',
+    marginLeft: 10,
+    flex: 1,
+  },
+  infoGrid: {
+    gap: 16,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#F7FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: '#A0AEC0',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  infoValue: {
+    fontSize: 15,
+    color: '#2D3748',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  commissionCard: {
+    borderColor: '#C6F6D5',
+    backgroundColor: '#FCFFFF',
+  },
+  miniBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  miniBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  commissionMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7FAFC',
+    padding: 16,
+    borderRadius: 16,
+  },
+  commLabel: {
+    fontSize: 12,
+    color: '#718096',
+    fontWeight: '700',
+  },
+  commValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#2D3748',
+  },
+  commSubValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#4A5568',
+  },
+  commDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 20,
+  },
+  paidInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    marginLeft: 4,
+  },
+  paidText: {
+    fontSize: 13,
+    color: '#48BB78',
+    fontWeight: '700',
+    marginLeft: 6,
+  },
+  historyList: {
+    marginTop: 4,
   },
   historyItem: {flexDirection: 'row'},
-  timeline: {alignItems: 'center', marginRight: 14},
+  timeline: {alignItems: 'center', marginRight: 16},
   dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#2196F3',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 6,
   },
   line: {
     width: 2,
     flex: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#EDF2F7',
+    marginVertical: 4,
   },
-  historyContent: {flex: 1, paddingBottom: 20},
+  historyContent: {flex: 1, paddingBottom: 24},
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   historyStatus: {
     fontSize: 15,
-    fontWeight: 'bold',
-    color: '#1A1A2E',
+    fontWeight: '800',
+    color: '#2D3748',
   },
   historyDate: {
     fontSize: 12,
-    color: '#999',
-    marginVertical: 3,
+    color: '#A0AEC0',
+    fontWeight: '700',
   },
   historyRemark: {
-    fontSize: 13,
-    color: '#666',
-    fontStyle: 'italic',
+    fontSize: 14,
+    color: '#718096',
+    marginTop: 4,
+    lineHeight: 20,
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    borderColor: '#CBD5E0',
   },
-  commissionSection: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
-  },
-  commissionAmountText: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-  bottomSpacer: {height: 30},
+  bottomSpacer: {height: 40},
   errorText: {
-    color: '#666',
-    fontSize: 16,
-    marginTop: 12,
+    color: '#2D3748',
+    fontSize: 18,
+    fontWeight: '800',
+    marginTop: 16,
+    marginBottom: 24,
   },
   retryButton: {
-    marginTop: 16,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
     backgroundColor: '#2196F3',
-    borderRadius: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    shadowColor: '#2196F3',
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 4,
   },
   retryText: {
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 15,
+    fontWeight: '800',
+    fontSize: 16,
   },
 });
 

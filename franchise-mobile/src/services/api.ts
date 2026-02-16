@@ -75,10 +75,10 @@ export const authService = {
     phone: string;
     city: string;
     password: string;
-  }) => api.post<SignupResponse>('/franchise/signup', data),
+  }) => api.post<SignupResponse>('/auth/franchise/signup', data),
 
   login: (idToken: string) =>
-    api.post<LoginResponse>('/franchise/login', { idToken }),
+    api.post<LoginResponse>('/auth/franchise/login', { idToken }),
 };
 
 // ── Franchise Service ─────────────────────────────────────────

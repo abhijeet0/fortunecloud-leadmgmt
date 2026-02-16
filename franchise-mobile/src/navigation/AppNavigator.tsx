@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useAuth} from '../context/AuthContext';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
 import OTPScreen from '../screens/auth/OTPScreen';
+import SplashScreen from '../screens/common/SplashScreen';
 import MainTabNavigator from './MainTabNavigator';
 import {ActivityIndicator, View, StyleSheet} from 'react-native';
 
@@ -11,13 +12,17 @@ const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
   const {user, loading} = useAuth();
+  const [showSplash, setShowSplash] = useState(true);
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2196F3" />
-      </View>
-    );
+  if (loading || showSplash) {
+    if (loading && !showSplash) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2196F3" />
+        </View>
+      );
+    }
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
   return (
