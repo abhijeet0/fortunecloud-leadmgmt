@@ -53,9 +53,11 @@ const leadSchema = new Schema<ILead>({
   phone: {
     type: String,
     required: true,
+    match: [/^\d{10}$/, 'Please fill a valid 10-digit phone number'],
   },
   email: {
     type: String,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please fill a valid email address'],
   },
   currentStatus: {
     type: String,

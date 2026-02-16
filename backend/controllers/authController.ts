@@ -13,6 +13,19 @@ export const franchiseSignup = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\d{10}$/;
+
+    if (!phoneRegex.test(phone)) {
+      res.status(400).json({ error: 'Invalid phone number format. Must be 10 digits.' });
+      return;
+    }
+
+    if (!emailRegex.test(email)) {
+      res.status(400).json({ error: 'Invalid email format' });
+      return;
+    }
+
     const existingFranchise = await Franchise.findOne({
       $or: [{ phone }, { email }],
     });

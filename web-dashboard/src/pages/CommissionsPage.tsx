@@ -184,8 +184,8 @@ const CommissionsPage: React.FC = () => {
       </div>
 
       {showModal && selectedCommission && (
-        <div className="modal show">
-          <div className="modal-content">
+        <div className={`modal ${showModal ? 'show' : ''}`} onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Update Commission Status</h2>
               <button className="modal-close" onClick={() => setShowModal(false)}>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiHome, FiUsers, FiDollarSign, FiFileText } from 'react-icons/fi';
+import { FiHome, FiUsers, FiDollarSign, FiTrendingUp } from 'react-icons/fi';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -24,7 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
           <span>Commissions</span>
         </NavLink>
         <NavLink to="/reports" className="nav-link">
-          <FiFileText size={20} />
+          <FiTrendingUp size={20} />
           <span>Reports</span>
         </NavLink>
       </nav>

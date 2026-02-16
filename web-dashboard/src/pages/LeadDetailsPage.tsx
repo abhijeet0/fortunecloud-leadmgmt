@@ -112,6 +112,20 @@ const LeadDetailsPage: React.FC = () => {
     }
   };
 
+  const getStatusBadgeClass = (status: string): string => {
+    switch (status) {
+      case 'Enrolled': return 'badge-success';
+      case 'HOT': return 'badge-danger';
+      case 'WARM': return 'badge-warning';
+      case 'COLD': return 'badge-info';
+      case 'Visited': return 'badge-warning';
+      case 'Lead acknowledged': return 'badge-info';
+      case 'Unspoken': return 'badge-secondary';
+      case 'Submitted': return 'badge-primary';
+      default: return 'badge-info';
+    }
+  };
+
   if (loading) return <div className="loading">Loading lead details...</div>;
   if (error) return <div className="error">{error}</div>;
   if (!lead) return <div className="error">Lead not found</div>;
@@ -160,7 +174,7 @@ const LeadDetailsPage: React.FC = () => {
             <div className="info-item">
               <label>Current Status</label>
               <p>
-                <span className="badge badge-success">{lead.currentStatus}</span>
+                <span className={`badge ${getStatusBadgeClass(lead.currentStatus)}`}>{lead.currentStatus}</span>
               </p>
             </div>
           </div>
@@ -245,8 +259,8 @@ const LeadDetailsPage: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="modal show">
-          <div className="modal-content">
+        <div className={`modal ${showModal ? 'show' : ''}`} onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Update Lead Status</h2>
               <button
@@ -304,8 +318,8 @@ const LeadDetailsPage: React.FC = () => {
       )}
 
       {showEnrollmentModal && (
-        <div className="modal show">
-          <div className="modal-content">
+        <div className={`modal ${showEnrollmentModal ? 'show' : ''}`} onClick={() => setShowEnrollmentModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Create Enrollment</h2>
               <button

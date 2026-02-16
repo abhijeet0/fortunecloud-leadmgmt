@@ -32,6 +32,7 @@ const franchiseSchema = new Schema<IFranchise>({
     type: String,
     required: true,
     unique: true,
+    match: [/^\d{10}$/, 'Please fill a valid 10-digit phone number'],
   },
   franchiseName: {
     type: String,
@@ -45,6 +46,7 @@ const franchiseSchema = new Schema<IFranchise>({
     type: String,
     required: true,
     unique: true,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please fill a valid email address'],
   },
   city: {
     type: String,

@@ -42,6 +42,13 @@ const LeadsPage: React.FC = () => {
   });
   const navigate = useNavigate();
 
+  const [showModal, setShowModal] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [statusData, setStatusData] = useState({
+    newStatus: '',
+    remarks: '',
+  });
+
   useEffect(() => {
     fetchLeads();
   }, [pagination.page, filters]);
@@ -62,6 +69,28 @@ const LeadsPage: React.FC = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = (lead: Lead) => {
+    setSelectedLead(lead);
+    setStatusData({
+      newStatus: lead.currentStatus,
+      remarks: '',
+    });
+    setShowModal(true);
+  };
+
+  const submitStatusUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLead) return;
+
+    try {
+      await adminAPI.updateLeadStatus(selectedLead._id, statusData);
+      setShowModal(false);
+      fetchLeads();
+    } catch (err) {
+      setError('Failed to update status');
     }
   };
 
@@ -161,12 +190,20 @@ const LeadsPage: React.FC = () => {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => handleLeadClick(lead._id)}
-                      >
-                        View
-                      </button>
+                      <div className="action-buttons">
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleLeadClick(lead._id)}
+                        >
+                          View
+                        </button>
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleUpdateStatus(lead)}
+                        >
+                          Status
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -187,6 +224,58 @@ const LeadsPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {showModal && selectedLead && (
+        <div className="modal show">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Update Status</h2>
+              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <form onSubmit={submitStatusUpdate}>
+              <div className="form-group">
+                <label>Student Name</label>
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
+                  {selectedLead.studentName}
+                </p>
+              </div>
+              <div className="form-group">
+                <label>New Status</label>
+                <select
+                  value={statusData.newStatus}
+                  onChange={(e) => setStatusData(prev => ({ ...prev, newStatus: e.target.value }))}
+                  required
+                >
+                  <option value="Submitted">Submitted</option>
+                  <option value="Lead acknowledged">Lead Acknowledged</option>
+                  <option value="HOT">HOT</option>
+                  <option value="WARM">WARM</option>
+                  <option value="Unspoken">Unspoken</option>
+                  <option value="COLD">COLD</option>
+                  <option value="Visited">Visited</option>
+                  <option value="Enrolled">Enrolled</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Remarks</label>
+                <textarea
+                  value={statusData.remarks}
+                  onChange={(e) => setStatusData(prev => ({ ...prev, remarks: e.target.value }))}
+                  placeholder="Enter status update remarks..."
+                />
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
