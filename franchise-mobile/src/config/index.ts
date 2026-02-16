@@ -25,7 +25,7 @@ const DEV_API_HOST = Platform.select({
 const DEV_API_URL = `http://${DEV_API_HOST}:5001/api`;
 const PROD_API_URL = 'https://api.fortunecloud.com/api'; // Update when ready
 
-export const API_URL: string = 'http://192.168.1.8:5001/api'; //__DEV__ ? DEV_API_URL : PROD_API_URL;
+export const API_URL: string = 'http://172.20.10.4:5001/api'; //__DEV__ ? DEV_API_URL : PROD_API_URL;
 
 // ── Firebase ──────────────────────────────────────────────────
 // Native Firebase SDKs are configured automatically from:

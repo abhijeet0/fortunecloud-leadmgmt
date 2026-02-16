@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import admin from 'firebase-admin';
+import AdminModel from '../models/Admin';
 
 export interface AuthRequest extends Request {
   uid?: string;
@@ -61,12 +62,21 @@ export const authorizeFinanceAdmin = async (
   try {
     const user = await admin.auth().getUser(req.uid!);
     const customClaims = (user.customClaims || {}) as Record<string, any>;
+    const claimRole = customClaims.role;
 
-    if (customClaims.role !== 'finance_admin' && customClaims.role !== 'admin') {
+    // Fallback to Mongo role when Firebase custom claims are not configured.
+    let dbRole: string | undefined;
+    if (!claimRole) {
+      const adminUser = await AdminModel.findOne({ firebaseUid: req.uid }).select('role');
+      dbRole = adminUser?.role;
+    }
+    const effectiveRole = claimRole || dbRole;
+
+    if (effectiveRole !== 'finance_admin' && effectiveRole !== 'admin') {
       res.status(403).json({ error: 'Not authorized' });
       return;
     }
-    req.userRole = customClaims.role;
+    req.userRole = effectiveRole;
     next();
   } catch (error) {
     res.status(403).json({ error: 'Authorization check failed' });

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, requestNotificationPermission } from '../firebase';
-import { authAPI } from '../api';
+import { authAPI, notificationAPI } from '../api';
 import './LoginPage.css';
 
 interface LoginPageProps {
@@ -33,6 +33,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       const deviceToken = await requestNotificationPermission();
       if (deviceToken) {
         localStorage.setItem('deviceToken', deviceToken);
+        try {
+          await notificationAPI.registerAdminDeviceToken(deviceToken, navigator.userAgent);
+        } catch (notificationError) {
+          console.warn('Failed to register admin notification token:', notificationError);
+        }
       }
 
       onLoginSuccess();

@@ -6,6 +6,7 @@ import LeadListScreen from '../screens/leads/LeadListScreen';
 import CreateLeadScreen from '../screens/leads/CreateLeadScreen';
 import LeadDetailScreen from '../screens/leads/LeadDetailScreen';
 import CommissionScreen from '../screens/main/CommissionScreen';
+import NotificationsScreen from '../screens/main/NotificationsScreen';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const Tab = createBottomTabNavigator();
@@ -37,6 +38,8 @@ const getTabBarIcon = (route: any) => {
       iconName = 'add-circle';
     } else if (route.name === 'Commission') {
       iconName = 'payments';
+    } else if (route.name === 'Notifications') {
+      iconName = 'notifications';
     }
     return <Icon name={iconName} size={size} color={color} />;
   };
@@ -65,6 +68,7 @@ const MainTabNavigator = () => {
       <Tab.Screen name="Leads" component={LeadNavigator} />
       <Tab.Screen name="Add Lead" component={CreateLeadScreen} />
       <Tab.Screen name="Commission" component={CommissionScreen} />
+      <Tab.Screen name="Notifications" component={NotificationsScreen} />
     </Tab.Navigator>
   );
 };

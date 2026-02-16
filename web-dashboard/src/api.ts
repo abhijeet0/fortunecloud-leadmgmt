@@ -63,4 +63,12 @@ export const commissionAPI = {
     api.get(`/commission/franchise/${franchiseId}`, { params }),
 };
 
+export const notificationAPI = {
+  registerAdminDeviceToken: (deviceToken: string, deviceName: string): Promise<AxiosResponse<any>> =>
+    api.post('/notifications/admin/device-token', {
+      deviceToken,
+      deviceName,
+    }),
+};
+
 export default api;

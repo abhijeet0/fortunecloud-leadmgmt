@@ -9,6 +9,7 @@ import type {
   LeadDetailResponse,
   DashboardResponse,
   CommissionsResponse,
+  NotificationsResponse,
   LeadCreatePayload,
   LeadsQueryParams,
 } from '../types';
@@ -94,6 +95,14 @@ export const franchiseService = {
   createLead: (data: LeadCreatePayload) => api.post('/franchise/leads', data),
 
   getCommissions: () => api.get<CommissionsResponse>('/franchise/commissions'),
+
+  getNotifications: (params?: {page?: number; limit?: number}) =>
+    api.get<NotificationsResponse>('/franchise/notifications', {params}),
+
+  markNotificationRead: (notificationId: string) =>
+    api.put(`/franchise/notifications/${notificationId}/read`),
+
+  markAllNotificationsRead: () => api.put('/franchise/notifications/read-all'),
 };
 
 // ── Notification Service ──────────────────────────────────────

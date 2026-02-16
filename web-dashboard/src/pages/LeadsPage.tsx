@@ -89,8 +89,9 @@ const LeadsPage: React.FC = () => {
       await adminAPI.updateLeadStatus(selectedLead._id, statusData);
       setShowModal(false);
       fetchLeads();
-    } catch (err) {
-      setError('Failed to update status');
+    } catch (err: any) {
+      const apiError = err?.response?.data?.error;
+      setError(apiError || 'Failed to update status');
     }
   };
 

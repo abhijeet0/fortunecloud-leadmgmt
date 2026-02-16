@@ -154,3 +154,36 @@ export interface LeadsQueryParams {
   page?: number;
   limit?: number;
 }
+
+// ============================
+// Notification Types
+// ============================
+
+export type NotificationType =
+  | 'lead_status_update'
+  | 'commission_approved'
+  | 'commission_paid'
+  | 'general';
+
+export interface AppNotification {
+  _id: string;
+  franchiseId: string;
+  title: string;
+  body: string;
+  type: NotificationType;
+  data?: Record<string, string>;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationsResponse {
+  notifications: AppNotification[];
+  unreadCount: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}

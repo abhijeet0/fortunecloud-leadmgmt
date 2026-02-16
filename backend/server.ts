@@ -27,24 +27,62 @@ app.use(
 );
 app.use(express.json());
 
-admin.initializeApp({
-  // credential: admin.credential.cert({
-  //   type: process.env.FIREBASE_TYPE || 'service_account',
-  //   project_id: process.env.FIREBASE_PROJECT_ID,
-  //   private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  //   private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  //   client_email: process.env.FIREBASE_CLIENT_EMAIL,
-  //   client_id: process.env.FIREBASE_CLIENT_ID,
-  //   auth_uri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
-  //   token_uri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
-  //   auth_provider_x509_cert_url:
-  //     process.env.FIREBASE_AUTH_CERT_URL || 'https://www.googleapis.com/oauth2/v1/certs',
-  //   client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
-  // }) as any,
-  // databaseURL: process.env.FIREBASE_DATABASE_URL,
-  projectId: "fortune-cloud-franchise-app",
+const firebaseProjectId = process.env.FIREBASE_PROJECT_ID || 'fortune-cloud-franchise-app';
+const hasInlineServiceAccount = !!process.env.FIREBASE_CLIENT_EMAIL && !!process.env.FIREBASE_PRIVATE_KEY;
+const hasGoogleCredentialsFile = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-});
+const normalizePrivateKey = (rawKey?: string): string | undefined => {
+  if (!rawKey) {
+    return undefined;
+  }
+  let key = rawKey.trim();
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1);
+  }
+  key = key.replace(/\\n/g, '\n');
+  return key;
+};
+
+const firebaseAppOptions: admin.AppOptions = {
+  projectId: firebaseProjectId,
+};
+
+if (hasInlineServiceAccount) {
+  try {
+    firebaseAppOptions.credential = admin.credential.cert({
+      type: process.env.FIREBASE_TYPE || 'service_account',
+      project_id: firebaseProjectId,
+      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+      private_key: normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY),
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_id: process.env.FIREBASE_CLIENT_ID,
+      auth_uri: process.env.FIREBASE_AUTH_URI || 'https://accounts.google.com/o/oauth2/auth',
+      token_uri: process.env.FIREBASE_TOKEN_URI || 'https://oauth2.googleapis.com/token',
+      auth_provider_x509_cert_url:
+        process.env.FIREBASE_AUTH_CERT_URL || 'https://www.googleapis.com/oauth2/v1/certs',
+      client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL,
+    } as any);
+  } catch (error) {
+    console.warn(
+      'Invalid FIREBASE_PRIVATE_KEY format. Falling back to application default credentials (if available).'
+    );
+    if (hasGoogleCredentialsFile) {
+      firebaseAppOptions.credential = admin.credential.applicationDefault();
+    }
+  }
+} else if (hasGoogleCredentialsFile) {
+  firebaseAppOptions.credential = admin.credential.applicationDefault();
+} else {
+  console.warn(
+    'Firebase Admin running without service account credentials. FCM sends may fail. ' +
+      'Set FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY or GOOGLE_APPLICATION_CREDENTIALS.'
+  );
+}
+
+admin.initializeApp(firebaseAppOptions);
 
 mongoose
   .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fortunecloud')

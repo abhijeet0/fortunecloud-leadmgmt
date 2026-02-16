@@ -93,8 +93,9 @@ const CommissionsPage: React.FC = () => {
       await commissionAPI.updateStatus(selectedCommission!._id, formData);
       setShowModal(false);
       await fetchCommissions();
-    } catch (err) {
-      setError('Failed to update commission');
+    } catch (err: any) {
+      const apiError = err?.response?.data?.error;
+      setError(apiError || 'Failed to update commission');
       console.error(err);
     }
   };

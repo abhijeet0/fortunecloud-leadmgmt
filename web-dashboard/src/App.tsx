@@ -9,6 +9,7 @@ import CommissionsPage from './pages/CommissionsPage';
 import ReportsPage from './pages/ReportsPage';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import {subscribeToForegroundMessages} from './firebase';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -31,6 +32,23 @@ const App: React.FC = () => {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      return;
+    }
+
+    const unsubscribe = subscribeToForegroundMessages(payload => {
+      const title = payload.notification?.title || 'Fortune Cloud';
+      const body = payload.notification?.body || '';
+
+      if (window.Notification && Notification.permission === 'granted') {
+        new Notification(title, {body});
+      }
+    });
+
+    return unsubscribe;
+  }, [isLoggedIn]);
 
   const handleLogout = (): void => {
     localStorage.removeItem('adminToken');

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getMessaging, Messaging, getToken, onMessage, MessagePayload } from 'firebase/messaging';
+import {getMessaging, Messaging, getToken, onMessage, MessagePayload} from 'firebase/messaging';
 
 interface FirebaseConfig {
   apiKey: string;
@@ -19,11 +19,8 @@ const firebaseConfig: FirebaseConfig = {
   messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || '',
   appId: process.env.REACT_APP_FIREBASE_APP_ID || '',
 };
-console.log("process.env", firebaseConfig);
-
 const app = initializeApp(firebaseConfig);
 export const auth: Auth = getAuth(app);
-console.log("Firebase Auth initialized:", auth);
 export const messaging: Messaging = getMessaging(app);
 
 export const requestNotificationPermission = async (): Promise<string | null> => {
@@ -41,12 +38,10 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
   return null;
 };
 
-export const onMessageListener = (): Promise<MessagePayload> => {
-  return new Promise((resolve) => {
-    onMessage(messaging, (payload: MessagePayload) => {
-      resolve(payload);
-    });
-  });
+export const subscribeToForegroundMessages = (
+  callback: (payload: MessagePayload) => void
+): (() => void) => {
+  return onMessage(messaging, callback);
 };
 
 export default app;

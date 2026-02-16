@@ -3,6 +3,7 @@ import Lead from '../models/Lead';
 import LeadStatusHistory from '../models/LeadStatusHistory';
 import Commission from '../models/Commission';
 import Franchise from '../models/Franchise';
+import AdminModel from '../models/Admin';
 import { AuthRequest } from '../middleware/auth';
 import * as notificationController from './notificationController';
 
@@ -96,6 +97,7 @@ export const updateLeadStatus = async (req: AuthRequest, res: Response): Promise
   try {
     const { leadId } = req.params;
     const { newStatus, remarks } = req.body;
+    const adminUser = await AdminModel.findOne({ firebaseUid: req.uid });
 
     const validStatuses = [
       'Submitted',
@@ -133,14 +135,18 @@ export const updateLeadStatus = async (req: AuthRequest, res: Response): Promise
       previousStatus,
       newStatus,
       remarks,
-      updatedBy: req.uid,
+      updatedBy: adminUser?._id,
     });
 
-    await notificationController.sendLeadStatusNotification(
+    const notificationResult = await notificationController.sendLeadStatusNotification(
       lead.franchiseId as any,
       lead.studentName,
-      newStatus
+      newStatus,
+      lead._id.toString()
     );
+    if (!notificationResult.success) {
+      console.warn('Lead status notification failed:', notificationResult.error || notificationResult.message);
+    }
 
     res.json({
       message: 'Lead status updated',
@@ -154,6 +160,7 @@ export const updateLeadStatus = async (req: AuthRequest, res: Response): Promise
 export const createEnrollment = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { leadId, admissionAmount } = req.body;
+    const adminUser = await AdminModel.findOne({ firebaseUid: req.uid });
 
     if (!leadId || !admissionAmount) {
       res.status(400).json({ error: 'Missing required fields' });
@@ -191,14 +198,18 @@ export const createEnrollment = async (req: AuthRequest, res: Response): Promise
       previousStatus: lead.currentStatus,
       newStatus: 'Enrolled',
       remarks: `Enrolled with admission amount: ${admissionAmount}`,
-      updatedBy: req.uid,
+      updatedBy: adminUser?._id,
     });
 
-    await notificationController.sendLeadStatusNotification(
+    const notificationResult = await notificationController.sendLeadStatusNotification(
       lead.franchiseId as any,
       lead.studentName,
-      'Enrolled'
+      'Enrolled',
+      lead._id.toString()
     );
+    if (!notificationResult.success) {
+      console.warn('Enrollment notification failed:', notificationResult.error || notificationResult.message);
+    }
 
     res.status(201).json({
       message: 'Enrollment created and commission calculated',
