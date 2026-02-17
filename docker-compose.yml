@@ -1,20 +1,6 @@
-version: '3.8'
+version: "1.0"
 
 services:
-  mongodb:
-    image: mongo:6.0
-    container_name: fortunecloud-mongodb
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_DATABASE: fortunecloud
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - fortunecloud-network
-
   backend:
     build:
       context: ./backend
@@ -22,8 +8,6 @@ services:
     container_name: fortunecloud-backend
     ports:
       - "5000:5000"
-    depends_on:
-      - mongodb
     env_file:
       - ./backend/.env
     volumes:
@@ -32,9 +16,6 @@ services:
     networks:
       - fortunecloud-network
     restart: unless-stopped
-
-volumes:
-  mongodb_data:
 
 networks:
   fortunecloud-network:
