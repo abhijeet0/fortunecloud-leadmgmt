@@ -6,9 +6,9 @@ import { AuthRequest } from '../middleware/auth';
 
 export const franchiseSignup = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { phone, franchiseName, ownerName, email, city, password } = req.body;
+    const { phone, franchiseName, ownerName, email, city, password, idToken } = req.body;
 
-    if (!phone || !franchiseName || !ownerName || !email || !city || !password) {
+    if (!phone || !franchiseName || !ownerName || !email || !city) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
@@ -35,15 +35,25 @@ export const franchiseSignup = async (req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    const userRecord = await admin.auth().createUser({
-      phoneNumber: phone.startsWith('+') ? phone : `+91${phone}`,
-      email,
-      password,
-      displayName: franchiseName,
-    });
+    let firebaseUid = '';
+    if (idToken) {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      firebaseUid = decodedToken.uid;
+    } else {
+      if (!password) {
+        res.status(400).json({ error: 'Password is required' });
+        return;
+      }
+      const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: ownerName,
+      });
+      firebaseUid = userRecord.uid;
+    }
 
     const franchise = new Franchise({
-      firebaseUid: userRecord.uid,
+      firebaseUid,
       phone,
       franchiseName,
       ownerName,
@@ -58,7 +68,19 @@ export const franchiseSignup = async (req: AuthRequest, res: Response): Promise<
     res.status(201).json({
       message: 'Franchise registered successfully',
       franchiseId: franchise._id,
-      uid: userRecord.uid,
+      token: idToken,
+      franchise: {
+        id: franchise._id,
+        firebaseUid: franchise.firebaseUid,
+        phone: franchise.phone,
+        franchiseName: franchise.franchiseName,
+        ownerName: franchise.ownerName,
+        email: franchise.email,
+        city: franchise.city,
+        isVerified: franchise.isVerified,
+        commissionPercentage: franchise.commissionPercentage,
+        status: franchise.status,
+      },
     });
   } catch (error: any) {
     if (error.code === 'auth/phone-number-already-exists') {
