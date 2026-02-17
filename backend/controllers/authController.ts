@@ -162,8 +162,7 @@ export const adminLogin = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const user = await admin.auth().getUser(decodedToken.uid);
-    const customClaims = (user.customClaims || {}) as Record<string, any>;
+    const customClaims = (decodedToken as any) || {};
 
     res.json({
       message: 'Login successful',

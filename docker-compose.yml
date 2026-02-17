@@ -1,4 +1,4 @@
-version: "1.0"
+version: "3.8"
 
 services:
   backend:
@@ -7,12 +7,9 @@ services:
       dockerfile: Dockerfile
     container_name: fortunecloud-backend
     ports:
-      - "5000:5000"
+      - "5001:5001"
     env_file:
       - ./backend/.env
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     networks:
       - fortunecloud-network
     restart: unless-stopped

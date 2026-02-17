@@ -28,8 +28,17 @@ app.use(
 app.use(express.json());
 
 const firebaseProjectId = process.env.FIREBASE_PROJECT_ID || 'fortune-cloud-franchise-app';
-const hasInlineServiceAccount = !!process.env.FIREBASE_CLIENT_EMAIL && !!process.env.FIREBASE_PRIVATE_KEY;
 const hasGoogleCredentialsFile = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+const isConfiguredValue = (value?: string): boolean => {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized.length > 0 && !normalized.startsWith('your_');
+};
+
+const hasInlineServiceAccount =
+  isConfiguredValue(process.env.FIREBASE_CLIENT_EMAIL) &&
+  isConfiguredValue(process.env.FIREBASE_PRIVATE_KEY);
 
 const normalizePrivateKey = (rawKey?: string): string | undefined => {
   if (!rawKey) {
@@ -82,7 +91,14 @@ if (hasInlineServiceAccount) {
   );
 }
 
-admin.initializeApp(firebaseAppOptions);
+try {
+  admin.initializeApp(firebaseAppOptions);
+} catch (error) {
+  console.warn(
+    'Firebase Admin initialization failed. Continuing without Firebase credentials. Error:',
+    error
+  );
+}
 
 mongoose
   .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/fortunecloud')
