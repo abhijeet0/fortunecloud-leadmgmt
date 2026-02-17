@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: fortunecloud-backend
     ports:
-      - "5001:5001"
+      - "5000:5000"
     env_file:
       - ./backend/.env
     networks:
