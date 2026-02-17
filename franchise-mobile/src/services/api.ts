@@ -75,7 +75,8 @@ export const authService = {
     email: string;
     phone: string;
     city: string;
-    password: string;
+    password?: string;
+    idToken?: string;
   }) => api.post<SignupResponse>('/auth/franchise/signup', data),
 
   login: (idToken: string) =>

@@ -1,12 +1,14 @@
-import React from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import {AppState} from 'react-native';
 import DashboardScreen from '../screens/main/DashboardScreen';
 import LeadListScreen from '../screens/leads/LeadListScreen';
 import CreateLeadScreen from '../screens/leads/CreateLeadScreen';
 import LeadDetailScreen from '../screens/leads/LeadDetailScreen';
 import CommissionScreen from '../screens/main/CommissionScreen';
 import NotificationsScreen from '../screens/main/NotificationsScreen';
+import {franchiseService} from '../services/api';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const Tab = createBottomTabNavigator();
@@ -46,6 +48,32 @@ const getTabBarIcon = (route: any) => {
 };
 
 const MainTabNavigator = () => {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const response = await franchiseService.getNotifications({page: 1, limit: 1});
+      setUnreadCount(response.data.unreadCount || 0);
+    } catch (error) {
+      console.warn('Failed to fetch unread notification count:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const intervalId = setInterval(fetchUnreadCount, 15000);
+    const appStateSub = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        fetchUnreadCount();
+      }
+    });
+
+    return () => {
+      clearInterval(intervalId);
+      appStateSub.remove();
+    };
+  }, [fetchUnreadCount]);
+
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({
@@ -68,7 +96,17 @@ const MainTabNavigator = () => {
       <Tab.Screen name="Leads" component={LeadNavigator} />
       <Tab.Screen name="Add Lead" component={CreateLeadScreen} />
       <Tab.Screen name="Commission" component={CommissionScreen} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} />
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+        }}
+        listeners={{
+          focus: fetchUnreadCount,
+          blur: fetchUnreadCount,
+        }}
+      />
     </Tab.Navigator>
   );
 };
