@@ -38,7 +38,7 @@ export const GOOGLE_WEB_CLIENT_ID =
   '864896641604-f5thn24kbjdjj0d379a3p52j2db037km.apps.googleusercontent.com';
 
 // ── App Constants ─────────────────────────────────────────────
-export const APP_NAME = 'FortuneCloud Franchise';
+export const APP_NAME = 'FortuneCloud Partners';
 export const DEFAULT_COUNTRY_CODE = '+91';
 export const OTP_LENGTH = 6;
 export const OTP_RESEND_TIMEOUT_SECONDS = 30;
