@@ -12,12 +12,13 @@ import {
   TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useFocusEffect } from '@react-navigation/native';
 import { franchiseService } from '../../services/api';
 
 interface Lead {
   _id: string;
   studentName: string;
-  course: string;
+  course?: string;
   phone: string;
   currentStatus: string;
   createdAt: string;
@@ -44,6 +45,12 @@ const LeadListScreen = ({ navigation }: any) => {
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchLeads();
+    }, [fetchLeads]),
+  );
 
   const onRefresh = () => {
     setRefreshing(true);

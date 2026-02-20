@@ -82,3 +82,32 @@
   font-size: 12px;
   font-weight: 700;
 }
+
+.clickable-card {
+  cursor: pointer;
+}
+
+.clickable-card:focus-visible {
+  outline: 3px solid rgba(33, 150, 243, 0.3);
+  outline-offset: 2px;
+}
+
+.clickable-section-card {
+  cursor: pointer;
+}
+
+.clickable-section-card:focus-visible {
+  outline: 3px solid rgba(33, 150, 243, 0.25);
+  outline-offset: 2px;
+}
+
+.clickable-status-item,
+.clickable-commission-item {
+  cursor: pointer;
+}
+
+.clickable-status-item:focus-visible,
+.clickable-commission-item:focus-visible {
+  outline: 2px solid rgba(33, 150, 243, 0.35);
+  outline-offset: 2px;
+}

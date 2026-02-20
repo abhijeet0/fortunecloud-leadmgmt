@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { adminAPI } from '../api';
 import './LeadsPage.css';
 
@@ -9,6 +9,10 @@ interface Lead {
   phone: string;
   city: string;
   qualification: string;
+  stream?: string;
+  yearOfPassing?: number;
+  email?: string;
+  remarks?: string;
   currentStatus: string;
 }
 
@@ -25,7 +29,26 @@ interface Filters {
   searchTerm: string;
 }
 
+interface LeadFormData {
+  studentName: string;
+  phone: string;
+  city: string;
+  qualification: string;
+  stream: string;
+  yearOfPassing: string;
+  email: string;
+  remarks: string;
+}
+
 const LeadsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialStatusFromQuery = searchParams.get('status')?.trim() || '';
+  const initialStatusFromState =
+    (location.state as { prefillStatus?: string } | null)?.prefillStatus || '';
+  const initialStatus = initialStatusFromQuery || initialStatusFromState;
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,16 +59,27 @@ const LeadsPage: React.FC = () => {
     pages: 0,
   });
   const [filters, setFilters] = useState<Filters>({
-    status: '',
+    status: initialStatus,
     city: '',
     searchTerm: '',
   });
-  const navigate = useNavigate();
+  const fetchSequenceRef = useRef(0);
 
-  const [showModal, setShowModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [statusData, setStatusData] = useState({
     newStatus: '',
+    remarks: '',
+  });
+  const [editData, setEditData] = useState<LeadFormData>({
+    studentName: '',
+    phone: '',
+    city: '',
+    qualification: '',
+    stream: '',
+    yearOfPassing: '',
+    email: '',
     remarks: '',
   });
 
@@ -53,7 +87,43 @@ const LeadsPage: React.FC = () => {
     fetchLeads();
   }, [pagination.page, filters]);
 
+  useEffect(() => {
+    const statusFromQuery = searchParams.get('status')?.trim() || '';
+    const prefillStatusFromState =
+      (location.state as { prefillStatus?: string } | null)?.prefillStatus || '';
+    const targetStatus = statusFromQuery || prefillStatusFromState;
+    if (!targetStatus || targetStatus === filters.status) return;
+
+    setFilters((prev) => ({ ...prev, status: targetStatus }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
+
+    if (!statusFromQuery && prefillStatusFromState) {
+      navigate(`${location.pathname}?status=${encodeURIComponent(prefillStatusFromState)}`, {
+        replace: true,
+        state: null,
+      });
+    }
+  }, [filters.status, location.pathname, location.state, navigate, searchParams]);
+
+  useEffect(() => {
+    if (filters.status) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('status', filters.status);
+        return next;
+      }, { replace: true });
+    } else if (searchParams.get('status')) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('status');
+        return next;
+      }, { replace: true });
+    }
+  }, [filters.status, searchParams, setSearchParams]);
+
   const fetchLeads = async (): Promise<void> => {
+    const requestId = ++fetchSequenceRef.current;
+
     try {
       setLoading(true);
       const response = await adminAPI.getLeads({
@@ -61,14 +131,25 @@ const LeadsPage: React.FC = () => {
         page: pagination.page,
         limit: pagination.limit,
       });
+
+      // Prevent stale responses from overriding newer filtered results.
+      if (requestId !== fetchSequenceRef.current) {
+        return;
+      }
+
       setLeads(response.data.leads);
       setPagination(response.data.pagination);
       setError('');
     } catch (err) {
+      if (requestId !== fetchSequenceRef.current) {
+        return;
+      }
       setError('Failed to load leads');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (requestId === fetchSequenceRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -78,7 +159,22 @@ const LeadsPage: React.FC = () => {
       newStatus: lead.currentStatus,
       remarks: '',
     });
-    setShowModal(true);
+    setShowStatusModal(true);
+  };
+
+  const handleEditLead = (lead: Lead): void => {
+    setSelectedLead(lead);
+    setEditData({
+      studentName: lead.studentName || '',
+      phone: lead.phone || '',
+      city: lead.city || '',
+      qualification: lead.qualification || '',
+      stream: lead.stream || '',
+      yearOfPassing: lead.yearOfPassing ? String(lead.yearOfPassing) : '',
+      email: lead.email || '',
+      remarks: lead.remarks || '',
+    });
+    setShowEditModal(true);
   };
 
   const submitStatusUpdate = async (e: React.FormEvent) => {
@@ -87,11 +183,49 @@ const LeadsPage: React.FC = () => {
 
     try {
       await adminAPI.updateLeadStatus(selectedLead._id, statusData);
-      setShowModal(false);
+      setShowStatusModal(false);
       fetchLeads();
     } catch (err: any) {
       const apiError = err?.response?.data?.error;
       setError(apiError || 'Failed to update status');
+    }
+  };
+
+  const submitLeadEdit = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (!selectedLead) return;
+
+    try {
+      await adminAPI.updateLead(selectedLead._id, {
+        studentName: editData.studentName.trim(),
+        phone: editData.phone.trim(),
+        city: editData.city.trim(),
+        qualification: editData.qualification.trim(),
+        stream: editData.stream.trim(),
+        yearOfPassing: editData.yearOfPassing.trim(),
+        email: editData.email.trim(),
+        remarks: editData.remarks.trim(),
+      });
+      setShowEditModal(false);
+      await fetchLeads();
+    } catch (err: any) {
+      const apiError = err?.response?.data?.error;
+      setError(apiError || 'Failed to update lead');
+    }
+  };
+
+  const handleDeleteLead = async (lead: Lead): Promise<void> => {
+    const confirmed = window.confirm(
+      `Delete lead "${lead.studentName}"? This will also remove related status history and commission records.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await adminAPI.deleteLead(lead._id);
+      await fetchLeads();
+    } catch (err: any) {
+      const apiError = err?.response?.data?.error;
+      setError(apiError || 'Failed to delete lead');
     }
   };
 
@@ -200,9 +334,21 @@ const LeadsPage: React.FC = () => {
                         </button>
                         <button
                           className="btn btn-primary btn-sm"
+                          onClick={() => handleEditLead(lead)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-primary btn-sm"
                           onClick={() => handleUpdateStatus(lead)}
                         >
                           Status
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDeleteLead(lead)}
+                        >
+                          Delete
                         </button>
                       </div>
                     </td>
@@ -226,12 +372,12 @@ const LeadsPage: React.FC = () => {
         )}
       </div>
 
-      {showModal && selectedLead && (
+      {showStatusModal && selectedLead && (
         <div className="modal show">
           <div className="modal-content">
             <div className="modal-header">
               <h2>Update Status</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+              <button className="modal-close" onClick={() => setShowStatusModal(false)}>×</button>
             </div>
             <form onSubmit={submitStatusUpdate}>
               <div className="form-group">
@@ -266,11 +412,109 @@ const LeadsPage: React.FC = () => {
                 />
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowStatusModal(false)}
+                >
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary">
                   Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && selectedLead && (
+        <div className="modal show">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>Edit Lead</h2>
+              <button className="modal-close" onClick={() => setShowEditModal(false)}>×</button>
+            </div>
+            <form onSubmit={submitLeadEdit}>
+              <div className="form-group">
+                <label>Student Name</label>
+                <input
+                  value={editData.studentName}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, studentName: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Phone</label>
+                <input
+                  value={editData.phone}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, phone: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>City</label>
+                <input
+                  value={editData.city}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, city: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Qualification</label>
+                <input
+                  value={editData.qualification}
+                  onChange={(e) =>
+                    setEditData((prev) => ({ ...prev, qualification: e.target.value }))
+                  }
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Stream</label>
+                <input
+                  value={editData.stream}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, stream: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Year Of Passing</label>
+                <input
+                  type="number"
+                  min="1900"
+                  max="2100"
+                  value={editData.yearOfPassing}
+                  onChange={(e) =>
+                    setEditData((prev) => ({ ...prev, yearOfPassing: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="form-group">
+                <label>Email</label>
+                <input
+                  type="email"
+                  value={editData.email}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, email: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label>Remarks</label>
+                <textarea
+                  value={editData.remarks}
+                  onChange={(e) => setEditData((prev) => ({ ...prev, remarks: e.target.value }))}
+                />
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Save Changes
                 </button>
               </div>
             </form>

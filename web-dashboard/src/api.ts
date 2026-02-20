@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -36,8 +36,17 @@ export const authAPI = {
 
 export const adminAPI = {
   getLeads: (params: any): Promise<AxiosResponse<any>> => api.get('/admin/leads', { params }),
+  deleteLead: (leadId: string): Promise<AxiosResponse<any>> => api.delete(`/admin/leads/${leadId}`),
+  getFranchises: (params: any): Promise<AxiosResponse<any>> =>
+    api.get('/admin/franchises', { params }),
+  updateFranchise: (franchiseId: string, data: any): Promise<AxiosResponse<any>> =>
+    api.put(`/admin/franchises/${franchiseId}`, data),
+  deleteFranchise: (franchiseId: string): Promise<AxiosResponse<any>> =>
+    api.delete(`/admin/franchises/${franchiseId}`),
   getLeadDetails: (leadId: string): Promise<AxiosResponse<any>> =>
     api.get(`/admin/leads/${leadId}`),
+  updateLead: (leadId: string, data: any): Promise<AxiosResponse<any>> =>
+    api.put(`/admin/leads/${leadId}`, data),
   updateLeadStatus: (leadId: string, data: any): Promise<AxiosResponse<any>> =>
     api.put(`/admin/leads/${leadId}/status`, data),
   createEnrollment: (data: any): Promise<AxiosResponse<any>> =>
@@ -58,6 +67,8 @@ export const commissionAPI = {
     api.get('/commission', { params }),
   updateStatus: (commissionId: string, data: any): Promise<AxiosResponse<any>> =>
     api.put(`/commission/${commissionId}/status`, data),
+  deleteCommission: (commissionId: string): Promise<AxiosResponse<any>> =>
+    api.delete(`/commission/${commissionId}`),
   getSummary: (): Promise<AxiosResponse<any>> => api.get('/commission/summary'),
   getByFranchise: (franchiseId: string, params: any): Promise<AxiosResponse<any>> =>
     api.get(`/commission/franchise/${franchiseId}`, { params }),

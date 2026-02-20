@@ -1,0 +1,54 @@
+.franchises-page {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.franchise-table {
+  min-width: 1180px;
+}
+
+.franchise-table th,
+.franchise-table td {
+  vertical-align: middle;
+}
+
+.franchise-table td:nth-child(1),
+.franchise-table td:nth-child(2),
+.franchise-table td:nth-child(3),
+.franchise-table td:nth-child(4),
+.franchise-table td:nth-child(5) {
+  white-space: nowrap;
+}
+
+.action-col {
+  text-align: center;
+  width: 160px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 64px 32px;
+  color: var(--text-secondary);
+  font-size: 16px;
+  font-weight: 600;
+  background-color: #f8fafc;
+  border-radius: var(--border-radius);
+  border: 2px dashed #e2e8f0;
+}

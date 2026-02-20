@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { commissionAPI } from '../api';
 import './CommissionsPage.css';
 
@@ -42,6 +43,8 @@ const CommissionsPage: React.FC = () => {
   const [filters, setFilters] = useState<Filters>({
     status: '',
   });
+  const location = useLocation();
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [selectedCommission, setSelectedCommission] = useState<Commission | null>(null);
   const [formData, setFormData] = useState<FormData>({
@@ -53,6 +56,15 @@ const CommissionsPage: React.FC = () => {
     fetchCommissions();
   }, [pagination.page, filters]);
 
+  useEffect(() => {
+    const prefillStatus = (location.state as { prefillStatus?: string } | null)?.prefillStatus;
+    if (!prefillStatus) return;
+
+    setFilters((prev) => ({ ...prev, status: prefillStatus }));
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
+
   const fetchCommissions = async (): Promise<void> => {
     try {
       setLoading(true);
@@ -61,12 +73,24 @@ const CommissionsPage: React.FC = () => {
         page: pagination.page,
         limit: pagination.limit,
       });
-      setCommissions(response.data.commissions);
-      setPagination(response.data.pagination);
+      const payload = response.data;
+      const commissionsData = Array.isArray(payload)
+        ? payload
+        : payload?.commissions || payload?.data || [];
+      const paginationData = payload?.pagination || {
+        page: 1,
+        limit: commissionsData.length || 20,
+        total: commissionsData.length || 0,
+        pages: 1,
+      };
+
+      setCommissions(commissionsData);
+      setPagination(paginationData);
       setError('');
-    } catch (err) {
-      setError('Failed to load commissions');
-      console.error(err);
+    } catch (err: any) {
+      const apiError = err?.response?.data?.error;
+      setError(apiError || 'Failed to load commissions');
+      console.error('Failed to load commissions:', err);
     } finally {
       setLoading(false);
     }
@@ -96,6 +120,22 @@ const CommissionsPage: React.FC = () => {
     } catch (err: any) {
       const apiError = err?.response?.data?.error;
       setError(apiError || 'Failed to update commission');
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCommission = async (commission: Commission): Promise<void> => {
+    const confirmed = window.confirm(
+      `Delete commission for "${commission.leadId?.studentName || 'this lead'}"?`
+    );
+    if (!confirmed) return;
+
+    try {
+      await commissionAPI.deleteCommission(commission._id);
+      await fetchCommissions();
+    } catch (err: any) {
+      const apiError = err?.response?.data?.error;
+      setError(apiError || 'Failed to delete commission');
       console.error(err);
     }
   };
@@ -157,12 +197,20 @@ const CommissionsPage: React.FC = () => {
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-primary"
-                        onClick={() => handleEditClick(commission)}
-                      >
-                        Edit
-                      </button>
+                      <div className="action-buttons">
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleEditClick(commission)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDeleteCommission(commission)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

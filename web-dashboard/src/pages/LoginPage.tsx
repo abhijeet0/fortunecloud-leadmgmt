@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, requestNotificationPermission } from '../firebase';
+import { auth } from '../firebase';
 import { authAPI, notificationAPI } from '../api';
 import './LoginPage.css';
 
@@ -30,15 +30,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       localStorage.setItem('adminToken', idToken);
       localStorage.setItem('admin', JSON.stringify(response.data.admin));
 
-      const deviceToken = await requestNotificationPermission();
-      if (deviceToken) {
-        localStorage.setItem('deviceToken', deviceToken);
-        try {
-          await notificationAPI.registerAdminDeviceToken(deviceToken, navigator.userAgent);
-        } catch (notificationError) {
-          console.warn('Failed to register admin notification token:', notificationError);
-        }
-      }
+      // const deviceToken = await requestNotificationPermission();
+      // if (deviceToken) {
+      //   localStorage.setItem('deviceToken', deviceToken);
+      //   try {
+      //     await notificationAPI.registerAdminDeviceToken(deviceToken, navigator.userAgent);
+      //   } catch (notificationError) {
+      //     console.warn('Failed to register admin notification token:', notificationError);
+      //   }
+      // }
 
       onLoginSuccess();
       navigate('/dashboard');

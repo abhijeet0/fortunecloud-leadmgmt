@@ -4,12 +4,13 @@ import './App.css';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import LeadsPage from './pages/LeadsPage';
+import FranchisesPage from './pages/FranchisesPage';
 import LeadDetailsPage from './pages/LeadDetailsPage';
 import CommissionsPage from './pages/CommissionsPage';
 import ReportsPage from './pages/ReportsPage';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
-import {subscribeToForegroundMessages} from './firebase';
+// import {subscribeToForegroundMessages} from './firebase';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -38,16 +39,16 @@ const App: React.FC = () => {
       return;
     }
 
-    const unsubscribe = subscribeToForegroundMessages(payload => {
-      const title = payload.notification?.title || 'Fortune Cloud';
-      const body = payload.notification?.body || '';
+    // const unsubscribe = subscribeToForegroundMessages(payload => {
+    // const title = payload.notification?.title || 'Fortune Cloud';
+    // const body = payload.notification?.body || '';
 
-      if (window.Notification && Notification.permission === 'granted') {
-        new Notification(title, {body});
-      }
-    });
+    // if (window.Notification && Notification.permission === 'granted') {
+    //   new Notification(title, {body});
+    // }
+    // });
 
-    return unsubscribe;
+    // return unsubscribe;
   }, [isLoggedIn]);
 
   const handleLogout = (): void => {
@@ -93,6 +94,14 @@ const App: React.FC = () => {
                 element={
                   <ProtectedRoute>
                     <LeadDetailsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/franchises"
+                element={
+                  <ProtectedRoute>
+                    <FranchisesPage />
                   </ProtectedRoute>
                 }
               />

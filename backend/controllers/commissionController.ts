@@ -7,30 +7,46 @@ import * as notificationController from './notificationController';
 
 export const getCommissions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const getQueryValue = (value: unknown): string => {
+      if (Array.isArray(value)) {
+        const first = value[0];
+        return typeof first === 'string' ? first.trim() : '';
+      }
+      return typeof value === 'string' ? value.trim() : '';
+    };
+
+    const status = getQueryValue(req.query.status);
+    const pageParam = getQueryValue(req.query.page);
+    const limitParam = getQueryValue(req.query.limit);
 
     const query: any = {};
-    if (status) {
-      query.status = status;
+    if (status !== '') {
+      // Allow case-insensitive status values from clients.
+      query.status = { $regex: `^${status}$`, $options: 'i' };
     }
 
-    const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const parsedPage = parseInt(pageParam, 10);
+    const parsedLimit = parseInt(limitParam, 10);
+    const pageNumber = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const pageSize = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 20;
+    const skip = (pageNumber - 1) * pageSize;
+
     const commissions = await Commission.find(query)
       .populate('franchiseId', 'franchiseName ownerName')
       .populate('leadId', 'studentName admissionAmount')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit as string));
+      .limit(pageSize);
 
     const total = await Commission.countDocuments(query);
 
     res.json({
       commissions,
       pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
+        page: pageNumber,
+        limit: pageSize,
         total,
-        pages: Math.ceil(total / parseInt(limit as string)),
+        pages: Math.ceil(total / pageSize),
       },
     });
   } catch (error: any) {
@@ -163,6 +179,22 @@ export const getCommissionByFranchise = async (
       },
       summary: summary[0] || { totalEarned: 0, totalPaid: 0 },
     });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteCommission = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { commissionId } = req.params;
+    const commission = await Commission.findByIdAndDelete(commissionId);
+
+    if (!commission) {
+      res.status(404).json({ error: 'Commission not found' });
+      return;
+    }
+
+    res.json({ message: 'Commission deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

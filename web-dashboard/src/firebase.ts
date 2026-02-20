@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import {getMessaging, Messaging, getToken, onMessage, MessagePayload} from 'firebase/messaging';
+// import { getMessaging, Messaging, getToken, onMessage, MessagePayload, isSupported } from 'firebase/messaging';
 
 interface FirebaseConfig {
   apiKey: string;
@@ -21,27 +21,33 @@ const firebaseConfig: FirebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 export const auth: Auth = getAuth(app);
-export const messaging: Messaging = getMessaging(app);
 
-export const requestNotificationPermission = async (): Promise<string | null> => {
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      const token = await getToken(messaging, {
-        vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
-      });
-      return token;
-    }
-  } catch (error) {
-    console.error('Error requesting notification permission:', error);
-  }
-  return null;
-};
+// export const messaging = isSupported().then((supported) => {
+//   if (supported) {
+//     return getMessaging(app);
+//   }
+//   return null;
+// });
 
-export const subscribeToForegroundMessages = (
-  callback: (payload: MessagePayload) => void
-): (() => void) => {
-  return onMessage(messaging, callback);
-};
+// export const requestNotificationPermission = async (): Promise<string | null> => {
+//   try {
+//     const permission = await Notification.requestPermission();
+//     if (permission === 'granted') {
+//       const token = await getToken(messaging, {
+//         vapidKey: process.env.REACT_APP_FIREBASE_VAPID_KEY,
+//       });
+//       return token;
+//     }
+//   } catch (error) {
+//     console.error('Error requesting notification permission:', error);
+//   }
+//   return null;
+// };
+
+// export const subscribeToForegroundMessages = (
+//   callback: (payload: MessagePayload) => void
+// ): (() => void) => {
+//   return onMessage(messaging, callback);
+// };
 
 export default app;

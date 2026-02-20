@@ -11,6 +11,12 @@ router.put(
   authorizeFinanceAdmin,
   commissionController.updateCommissionStatus
 );
+router.delete(
+  '/:commissionId',
+  authenticateAdmin,
+  authorizeFinanceAdmin,
+  commissionController.deleteCommission
+);
 router.get('/summary', authenticateAdmin, commissionController.getCommissionSummary);
 router.get(
   '/franchise/:franchiseId',

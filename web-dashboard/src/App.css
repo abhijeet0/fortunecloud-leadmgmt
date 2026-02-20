@@ -172,6 +172,17 @@
   transform: translateY(-1px);
 }
 
+.btn-danger {
+  background-color: #ef4444;
+  color: white;
+  box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.25);
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+  transform: translateY(-1px);
+}
+
 .modal {
   position: fixed;
   top: 0;
@@ -181,7 +192,9 @@
   background-color: rgba(0, 0, 0, 0.5);
   display: none;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 24px;
   z-index: 2000;
   backdrop-filter: blur(4px);
 }
@@ -196,10 +209,25 @@
   border-radius: 16px;
   width: 90%;
   max-width: 550px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
   box-shadow: var(--shadow-medium);
   border: 1px solid #f1f5f9;
   position: relative;
   animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .modal {
+    padding: 16px;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-height: calc(100vh - 32px);
+    padding: 20px;
+  }
 }
 
 @keyframes modalFadeIn {
